@@ -8,16 +8,13 @@ import TensorFlow
     import Python
 #endif
 
-// import SwiftML
 
-
-protocol LinearRegression {
+protocol LinearRegressor {
     var fitIntercept: Bool {get set }
     var weights: Tensor<Float> {get set}
     var intercept_: Tensor<Float> { get }
     var coef_: Tensor<Float> { get }
 
-    // \beta = (X^T dot X)^-1 dot X^T dot y
     mutating func fit(data x: Tensor<Float>, labels y: Tensor<Float>)
 
     func predict(data x: Tensor<Float>) -> Tensor<Float>
@@ -34,9 +31,12 @@ func preprocessX(_ xIn: Tensor<Float>, fitIntercept: Bool) -> Tensor<Float> {
     }
     return x
 }
-    
 
-struct OLSRegression: LinearRegression {
+    
+/// Linear regression implements Ordinary Least Squares.
+/// 
+/// Can be called by `model.fit(x, y)` or `model(x, y)`.
+struct OLSRegression: LinearRegressor {
     var fitIntercept: Bool
     var weights: Tensor<Float>
     var intercept_: Tensor<Float> {
@@ -62,6 +62,10 @@ struct OLSRegression: LinearRegression {
     init(fitIntercept: Bool=true) {
         self.weights = Tensor<Float>(0)
         self.fitIntercept = fitIntercept
+    }
+
+    mutating func callAsFunction(data x: Tensor<Float>, labels y: Tensor<Float>) {
+        self.fit(data: x, labels: y)
     }
 
     // \beta = (X^T dot X)^-1 dot X^T dot y
@@ -111,6 +115,8 @@ struct OLSRegression: LinearRegression {
     // }
 }
 
+
+
 let np = Python.import("numpy")
 let datasets = Python.import("sklearn.datasets")
 
@@ -135,7 +141,8 @@ let trainLabels = labels.slice(lowerBounds: [0, 0], upperBounds: [trainEnd,1])
 let testLabels = labels.slice(lowerBounds: [trainEnd,0], upperBounds: [trainEnd+testLen, 1])
 
 var model = OLSRegression(fitIntercept: true)
-model.fit(data: trainData, labels: trainLabels)
+// model.fit(data: trainData, labels: trainLabels)
+model(data: trainData, labels: trainLabels)
 // model.predict(data: testData)
 print(model.weights)
 // print(model.weights.shape)
