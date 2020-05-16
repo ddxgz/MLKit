@@ -24,9 +24,55 @@ protocol TreeEstimator {
 
 typealias Matrix = Tensor<Float>
 
-typealias ImpurityIndex = ([[Int32]], [Int32]) -> Float
+extension Matrix {
+    func select(rows: [Int]) -> Matrix {
+        // guard rows != nil || cols != nil else {
+        //     print("not param provided")
+        //     return self
+        // }
+        var new: Matrix = Matrix(shape: [rows.count, self.shape[1]], repeating: 0) // = NdArray()
+        for (i, row) in rows.enumerated() {
+            // let data = x.concatenated(with: y1d, alongAxis: 1)
+            // let row = self[Int(i)].reshaped(to: [1, self.shape[1]])
+            // let y1d = y.reshaped(to: [y.shape[0], 1])
+            // print("new: \(new.shape), row: \(row.shape)")
+            // new = new.concatenated(with: row, alongAxis: 0)
+            new[i, 0...] = self[row, 0...]
+            // new.replacing(with: row, where: new[Int(i), 0...].Index)
+            // print(row)
+        }
+        // return new[1..., 0...]
+        return new
+        // print(new[1..., 0...])
+        // return data
+    }
 
-func giniImpurity(groups: [[Int32]], classes: [Int32]) -> Float {
+    func select(cols: [Int]) -> Matrix {
+        var new: Matrix = Matrix(shape: [self.shape[0], cols.count], repeating: 0) // = NdArray()
+        print(new.shape)
+        print(self.shape)
+        for (i, col) in cols.enumerated() {
+            new[0..., i] = self[0..., col]
+        }
+        return new
+    }
+
+    func select(rows: [Int], cols: [Int]) -> Matrix {
+        var new: Matrix = Matrix(shape: [rows.count, cols.count], repeating: 0) // = NdArray()
+        print(new.shape)
+        print(self.shape)
+        for (i, row) in rows.enumerated() {
+            for (j, col) in cols.enumerated() {
+                new[i, j] = self[row, col]
+            }
+        }
+        return new
+    }
+}
+
+typealias ImpurityIndex = ([[Int]], [Int]) -> Float
+
+func giniImpurity(groups: [[Int]], classes: [Int]) -> Float {
     var N = 0.0
     for group in groups {
         N += Double(group.count)
@@ -55,7 +101,7 @@ let Criteria = [
     // "mse": MSE,
 ]
 
-typealias Groups = (left: [Int32], right: [Int32])
+typealias Groups = (left: [Int], right: [Int])
 
 class Node: CustomStringConvertible {
     var id: Int
@@ -89,7 +135,7 @@ class Node: CustomStringConvertible {
         self.feature = -1
         self.splitValue = -1
         self.score = -1
-        self.groups = (left: [Int32](), right: [Int32]())
+        self.groups = (left: [Int](), right: [Int]())
     }
 
     public var description: String {
@@ -183,7 +229,7 @@ struct BestFirstTreeBuilder {
     let criterion: ImpurityIndex
     let isClassification: Bool
     var nFeatures: Int
-    var classes: [Int32]
+    var classes: [Int]
     var nOutputs: Int
     var maxDepth: Int
     var minSamplesSplit: Int
@@ -208,12 +254,14 @@ struct BestFirstTreeBuilder {
             return
         }
         let (left, right) = node.groups
-        let leftData = dataSample(idx: left, data: data)
+        // let leftData = dataSample(idx: left, data: data)
+        let leftData = data.select(rows: left)
         let leftNode = addSplitNode(data: leftData, depth: depth, isFirst: false, isLeft: true, parent: node)
         // tree.addLeftChild(parent: node, child: leftNode)
         tree.addNode(leftNode)
 
-        let rightData = dataSample(idx: right, data: data)
+        // let rightData = dataSample(idx: right, data: data)
+        let rightData = data.select(rows: right)
         let rightNode = addSplitNode(data: rightData, depth: depth, isFirst: false, isLeft: false, parent: node)
         // tree.addRightChild(parent: node, child: rightNode)
         tree.addNode(rightNode)
@@ -324,9 +372,9 @@ struct BestFirstTreeBuilder {
     }
 
     func getSampleSplit(col: Int, splitBy: Float, data: Matrix) -> Groups {
-        var left = [Int32](), right = [Int32]()
+        var left = [Int](), right = [Int]()
         for (idx, value) in data[0..., col].scalars.enumerated() {
-            let rowIdx = Int32(idx)
+            let rowIdx = Int(idx)
 
             if value < splitBy {
                 left.append(rowIdx)
@@ -338,15 +386,15 @@ struct BestFirstTreeBuilder {
     }
 
     func getLabelGroups(sampleSplit idxGroups: Groups, data: Matrix) -> Groups {
-        var left = [Int32](), right = [Int32]()
+        var left = [Int](), right = [Int]()
         for idx in idxGroups.left {
             let c = data[Int(idx), -1]
-            let v = Int32(c.scalar!)
+            let v = Int(c.scalar!)
             left.append(v)
         }
         for idx in idxGroups.right {
             let c = data[Int(idx), -1]
-            let v = Int32(c.scalar!)
+            let v = Int(c.scalar!)
             right.append(v)
         }
 
@@ -418,7 +466,7 @@ struct DecisionTree: TreeEstimator {
         // let classes, yEncoded = elements.y, elements.idx
         // print("classes: \(classes)\nyEncoded: \(yEncoded)")
 
-        let classesEnc = classes.scalars.map { Int32($0) }
+        let classesEnc = classes.scalars.map { Int($0) }
         print(type(of: classesEnc))
 
         nClasses = Int(classes.shape[0])
@@ -582,6 +630,7 @@ func test_gini() {
     let labels = dataset[0..., 2]
     print(features)
     print(labels)
+
     var model = DecisionTree()
     // var model = OLSRegression(fitIntercept: true)
     model.fit(data: features, labels: labels)
@@ -589,13 +638,16 @@ func test_gini() {
 
     let testdata = Tensor<Float>([[1.771244718, 1.784783929],
                                   [1.928571309, 1.169761413],
-                                  
+
                                   [3.861043357, 2.61995032],
                                   [6.942287351, 3.319983761],
                                   [8.444542326, 0.476683375],
                                   [11.12493903, 3.234550982]])
-    // model.predict(data: testdata)
+    model.predict(data: testdata)
     model.score(data: testdata, labels: [0, 0, 1, 0, 1, 1])
+
+    // let mat = Matrix(dataset)
+    // print(mat.select(rows: [0, 2, 4]))
 }
 
 // test_tree_regression()
