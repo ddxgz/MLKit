@@ -129,37 +129,3 @@ struct OLSRegression: LinearRegressor {
     //     return x
     // }
 }
-
-let np = Python.import("numpy")
-let datasets = Python.import("sklearn.datasets")
-
-let diabetes = datasets.load_diabetes()
-
-let diabetesData = Tensor<Float>(numpy: np.array(diabetes.data, dtype: np.float32))!
-var diabetesLabels = Tensor<Float>(numpy: np.array(diabetes.target, dtype: np.float32))!
-
-let data = diabetesData.slice(lowerBounds: [0, 0], upperBounds: [diabetesData.shape[0], diabetesData.shape[1]])
-let labels = diabetesLabels.reshaped(to: [diabetesLabels.shape[0], 1])
-
-let dataLen = data.shape[0]
-let dataWid = data.shape[1]
-let test_size = 0.3
-let testLen = Int(Double(data.shape[0]) * test_size)
-let trainEnd = dataLen - testLen
-
-let trainData = data.slice(lowerBounds: [0, 0], upperBounds: [trainEnd, dataWid])
-let testData = data.slice(lowerBounds: [trainEnd, 0], upperBounds: [trainEnd + testLen, dataWid])
-
-let trainLabels = labels.slice(lowerBounds: [0, 0], upperBounds: [trainEnd, 1])
-let testLabels = labels.slice(lowerBounds: [trainEnd, 0], upperBounds: [trainEnd + testLen, 1])
-
-var model = OLSRegression(fitIntercept: true)
-// model.fit(data: trainData, labels: trainLabels)
-model(data: trainData, labels: trainLabels)
-// model.predict(data: testData)
-print(model.weights)
-// print(model.weights.shape)
-print(model.coef_)
-print(model.intercept_)
-let score = model.score(data: testData, labels: testLabels)
-print(score)
