@@ -30,7 +30,7 @@ extension Matrix {
         //     print("not param provided")
         //     return self
         // }
-        var new: Matrix = Matrix(shape: [rows.count, self.shape[1]], repeating: 0) // = NdArray()
+        var new: Matrix = Matrix(repeating: 0, shape: [rows.count, self.shape[1]]) // = NdArray()
         for (i, row) in rows.enumerated() {
             // let data = x.concatenated(with: y1d, alongAxis: 1)
             // let row = self[Int(i)].reshaped(to: [1, self.shape[1]])
@@ -48,9 +48,9 @@ extension Matrix {
     }
 
     func select(cols: [Int]) -> Matrix {
-        var new: Matrix = Matrix(shape: [self.shape[0], cols.count], repeating: 0) // = NdArray()
-        print(new.shape)
-        print(self.shape)
+        var new: Matrix = Matrix(repeating: 0, shape: [self.shape[0], cols.count]) // = NdArray()
+        // print(new.shape)
+        // print(self.shape)
         for (i, col) in cols.enumerated() {
             new[0..., i] = self[0..., col]
         }
@@ -58,9 +58,9 @@ extension Matrix {
     }
 
     func select(rows: [Int], cols: [Int]) -> Matrix {
-        var new: Matrix = Matrix(shape: [rows.count, cols.count], repeating: 0) // = NdArray()
-        print(new.shape)
-        print(self.shape)
+        var new: Matrix = Matrix(repeating: 0, shape: [rows.count, cols.count]) // = NdArray()
+        // print(new.shape)
+        // print(self.shape)
         for (i, row) in rows.enumerated() {
             for (j, col) in cols.enumerated() {
                 new[i, j] = self[row, col]
@@ -139,11 +139,15 @@ class Node: CustomStringConvertible {
     }
 
     public var description: String {
-        if isEmpty { return " " }
+        if isEmpty { return "[empty node]" }
 
         let space = String(repeating: " ", count: depth * 2)
-        return """
-        \(space)id: \(id), leaf: \(isLeaf), value: \(value), \
+        var desc = "\(space)id: \(id), leaf: \(isLeaf), "
+
+        // let possibleValue = value ?? 0.0
+        if isLeaf { desc += "value: \(value!), " }
+
+        return desc + """
         feature: \(feature), splitValue: \(splitValue), score: \(score)
         """
     }
@@ -196,11 +200,11 @@ class DTree {
         // var new: Matrix = Matrix(shape: [1, data.shape[1]], repeating: 0) // = NdArray()
         for i in 0 ..< n_samples {
             var node = nodes[0]
-            print("sample: \(i), \(x[i])")
+            // print("sample: \(i), \(x[i])")
             // while leftChild(node).isLeaf != true {
             while node.isLeaf != true {
-                print("in node: \(node)")
-                print("data value to compare: \(x[i, node.feature].scalar)")
+                // print("in node: \(node)")
+                // print("data value to compare: \(x[i, node.feature].scalar)")
                 if x[i, node.feature].scalar! < node.splitValue {
                     node = leftChild(node)
                 } else {
@@ -208,7 +212,7 @@ class DTree {
                 }
             }
             // out = out.concatenated(with: node.value, alongAxis: 0)
-            print(node)
+            // print(node)
             out[i] = node.value!
         }
         // print(out)
@@ -237,8 +241,8 @@ struct BestFirstTreeBuilder {
     // var criterionFn: ImpurityIndex
 
     func build(data: Matrix) -> DTree {
-        var tree = DTree()
-        var depth = 0
+        let tree = DTree()
+        let depth = 0
         let node = addSplitNode(data: data, depth: depth, isFirst: true, isLeft: nil, parent: nil)
         tree.addNode(node)
 
@@ -249,7 +253,7 @@ struct BestFirstTreeBuilder {
 
     func splitNode(tree: DTree, node: Node, data: Matrix, depth: Int) {
         if isLeaf(node) {
-            print("rearched Leaf")
+            // print("rearched Leaf")
             markLeaf(node, data: data)
             return
         }
@@ -271,7 +275,7 @@ struct BestFirstTreeBuilder {
     }
 
     func dataSample(idx: [Int32], data: Matrix) -> Matrix {
-        var new: Matrix = Matrix(shape: [1, data.shape[1]], repeating: 0) // = NdArray()
+        var new: Matrix = Matrix(repeating: 0, shape: [1, data.shape[1]]) // = NdArray()
         for i in idx {
             // let data = x.concatenated(with: y1d, alongAxis: 1)
             let row = data[Int(i)].reshaped(to: [1, data.shape[1]])
@@ -296,29 +300,30 @@ struct BestFirstTreeBuilder {
             let c = data[Int(idx), -1]
             values.append(c.scalar!)
         }
-        print("values: \(values)")
+        // print("values: \(values)")
         if isClassification {
             // node.value = values.max
             let cnt = values.reduce(into: [:]) { counts, number in
                 counts[number, default: 0] += 1
             }
-            print("cnt: \(cnt)")
-            let (value, c) = cnt.max(by: { a, b in a.value < b.value })!
-            print("value: \(value)")
+            // print("cnt: \(cnt)")
+            let (value, _) = cnt.max(by: { a, b in a.value < b.value })!
+            // print("value: \(value)")
             node.value = value
         } else {
             let sum = values.reduce(0,+)
             node.value = sum / Float(values.count)
         }
-        print(node.value)
+        // print(node.value)
         // TODO: regression
         node.isLeaf = true
     }
 
     func isLeaf(_ node: Node) -> Bool {
-        guard node.groups != nil else { return true }
+        // guard node.groups != nil else { return true }
 
-        if node.groups.left == nil || node.groups.right == nil {
+        // if node.groups.left == nil || node.groups.right == nil {
+        if node.groups.left.count == 0 || node.groups.right.count == 0 {
             return true
         }
         if node.depth >= maxDepth {
@@ -340,12 +345,12 @@ struct BestFirstTreeBuilder {
         for col in 0 ..< nFeatures - 1 {
             for value in data[0..., col].scalars {
                 let sampleSplit = getSampleSplit(col: col, splitBy: value, data: data)
-                print("sampleSplit: \(sampleSplit)")
+                // print("sampleSplit: \(sampleSplit)")
                 let labelGroups = getLabelGroups(sampleSplit: sampleSplit, data: data)
-                print("labelGroups: \(labelGroups)")
+                // print("labelGroups: \(labelGroups)")
                 let score = criterion([labelGroups.left, labelGroups.right],
                                       classes)
-                print("score: \(score)")
+                // print("score: \(score)")
                 if score < bstScore {
                     bstScore = score
                     bstCol = col
@@ -357,7 +362,7 @@ struct BestFirstTreeBuilder {
         }
         if isFirst {
             nodeId = 1
-        } else if parent != nil, isLeaf != nil {
+        } else if parent != nil, isLeft != nil {
             if isLeft! {
                 nodeId = parent!.id * 2
             } else {
@@ -366,7 +371,7 @@ struct BestFirstTreeBuilder {
         } else {
             print("Should provide isLeft and parent node if not first!")
         }
-        print("bstGroups: \(bstGroups)")
+        // print("bstGroups: \(bstGroups)")
         return Node(id: nodeId, depth: depth, feature: bstCol, splitValue: bstSplitValue, score: bstScore,
                     groups: bstGroups!)
     }
@@ -404,9 +409,9 @@ struct BestFirstTreeBuilder {
 
 func accuracy(_ y: Tensor<Float>, _ pred: Tensor<Float>) -> Float {
     // let y1d = y.reshaped(to: [y.shape[0], 1])
-    print(y.shape)
+    // print(y.shape)
     // print(y1d.shape)
-    print(pred.shape)
+    // print(pred.shape)
     var cnt = 0.0
     for i in 0 ..< y.shape[0] {
         if y[i] == pred[i] {
@@ -515,7 +520,7 @@ struct DecisionTree: TreeEstimator {
         // print(proba)
         let result = Tensor<Float>(proba)
         // print(type(of:result))
-        print(result.shape)
+        // print(result.shape)
         return result
     }
 
@@ -528,6 +533,7 @@ struct DecisionTree: TreeEstimator {
         // printNode(node: node, depth: 0)
         // print(tree.nodes)
         for node in tree.nodes {
+            if node.isEmpty { continue }
             print(node)
         }
     }
@@ -536,119 +542,7 @@ struct DecisionTree: TreeEstimator {
         let pred = predict(data: x)
         let score = accuracy(y, pred)
         // return score
-        print("score: \(score)")
+        // print("score: \(score)")
         return score
     }
 }
-
-let np = Python.import("numpy")
-let datasets = Python.import("sklearn.datasets")
-let sktree = Python.import("sklearn.tree")
-
-func test_tree_regression() {
-    // let diabetes = datasets.load_diabetes()
-    let diabetes = datasets.load_iris()
-
-    let diabetesData = Tensor<Float>(numpy: np.array(diabetes.data, dtype: np.float32))!
-    let diabetesLabels = Tensor<Float>(numpy: np.array(diabetes.target, dtype: np.float32))!
-
-    let data = diabetesData.slice(lowerBounds: [0, 0],
-                                  upperBounds: [diabetesData.shape[0], 3])
-    let labels = diabetesLabels.reshaped(to: [diabetesLabels.shape[0], 1])
-
-    let start = 16
-    // let dataLen = data.shape[0]
-    let dataLen = 90
-    let test_size = 0.3
-    let testLen = Int(Double(dataLen) * test_size)
-    let trainEnd = start + dataLen - testLen
-
-    let trainData = data.slice(lowerBounds: [start, 0], upperBounds: [trainEnd, 3])
-    // let testData = data.slice(lowerBounds: [trainEnd, 0],
-    //                           upperBounds: [trainEnd + testLen, 3])
-
-    let trainLabels = labels.slice(lowerBounds: [start, 0], upperBounds: [trainEnd, 1])
-    // let testLabels = labels.slice(lowerBounds: [trainEnd, 0],
-    //                               upperBounds: [trainEnd + testLen, 1])
-
-    // print(trainData)
-    // print(trainLabels)
-    // let trainDataset: Dataset<IrisBatch> = Dataset(
-    //     contentsOfCSVFile: trainDataFilename, hasHeader: true,
-    //     featureColumns: [0, 1, 2, 3], labelColumns: [4]
-    // ).batched(batchSize)
-
-    var model = DecisionTree()
-    // var model = OLSRegression(fitIntercept: true)
-    model.fit(data: trainData, labels: trainLabels)
-    model.printTree()
-    // model.predict(data: testData)
-    // // print(model.weights)
-    // // // print(model.weights.shape)
-    // // print(model.coef_)
-    // // print(model.intercept_)
-    // // let score = model.score(data: testData, labels: testLabels)
-    // // print(score)
-    // var skmodel = sktree.DecisionTreeClassifier()
-    // skmodel.fit(trainData.makeNumpyArray(), trainLabels.makeNumpyArray())
-    // print(skmodel.tree_.decision_path(trainData.makeNumpyArray()))
-}
-
-func test_gini() {
-    // let dataset = np.array([[2.771244718, 1.784783929, 0],
-    //                         [1.728571309, 1.169761413, 0],
-    //                         [3.678319846, 2.81281357, 0],
-    //                         //  [8.961043357, 2.61995032, 0],
-    //                         [3.961043357, 2.61995032, 0],
-    //                         [2.999208922, 2.209014212, 0],
-    //                         [7.497545867, 3.162953546, 1],
-    //                         [9.00220326, 3.339047188, 1],
-    //                         [7.444542326, 0.476683375, 1],
-    //                         [10.12493903, 3.234550982, 1],
-    //                         [6.642287351, 3.319983761, 1]])
-
-    // let col = 2
-    // print(dataset[0, col])
-    let dataset = Tensor<Float>([[2.771244718, 1.784783929, 0],
-                                 [1.728571309, 1.169761413, 0],
-                                 
-                                 [2.999208922, 2.209014212, 1],
-                                 
-                                 [3.678319846, 2.81281357, 0],
-                                 
-                                 [3.961043357, 2.61995032, 1],
-                                 [6.642287351, 3.319983761, 1],
-                                 [7.444542326, 0.476683375, 1],
-                                 [7.497545867, 3.162953546, 1],
-                                 
-                                 [8.961043357, 2.61995032, 0],
-                                 
-                                 [9.00220326, 3.339047188, 1],
-                                 [10.12493903, 3.234550982, 1]])
-
-    let features = dataset[0..., 0 ... 1]
-    let labels = dataset[0..., 2]
-    print(features)
-    print(labels)
-
-    var model = DecisionTree()
-    // var model = OLSRegression(fitIntercept: true)
-    model.fit(data: features, labels: labels)
-    model.printTree()
-
-    let testdata = Tensor<Float>([[1.771244718, 1.784783929],
-                                  [1.928571309, 1.169761413],
-
-                                  [3.861043357, 2.61995032],
-                                  [6.942287351, 3.319983761],
-                                  [8.444542326, 0.476683375],
-                                  [11.12493903, 3.234550982]])
-    model.predict(data: testdata)
-    model.score(data: testdata, labels: [0, 0, 1, 0, 1, 1])
-
-    // let mat = Matrix(dataset)
-    // print(mat.select(rows: [0, 2, 4]))
-}
-
-// test_tree_regression()
-test_gini()
