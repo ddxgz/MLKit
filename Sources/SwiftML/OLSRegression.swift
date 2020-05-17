@@ -1,24 +1,41 @@
-import Foundation
 import TensorFlow
 
-// import PythonKit
-#if canImport(PythonKit)
-    import PythonKit
-#else
-    import Python
-#endif
+// #if canImport(PythonKit)
+//     import PythonKit
+// #else
+//     import Python
+// #endif
 
 protocol LinearRegressor {
     var fitIntercept: Bool { get set }
     var weights: Tensor<Float> { get set }
     var intercept_: Tensor<Float> { get }
     var coef_: Tensor<Float> { get }
+    var scoring: String { get }
 
     mutating func fit(data x: Tensor<Float>, labels y: Tensor<Float>)
 
     func predict(data x: Tensor<Float>) -> Tensor<Float>
 
     func score(data x: Tensor<Float>, labels y: Tensor<Float>) -> Float
+}
+
+extension LinearRegressor {
+    func predict(data x: Tensor<Float>) -> Tensor<Float> {
+        // let x = preprocessX(x)
+        let x = preprocessX(x, fitIntercept: fitIntercept)
+        return matmul(x, weights)
+    }
+
+    // r^2
+    func score(data x: Tensor<Float>, labels y: Tensor<Float>) -> Float {
+        let predicted = predict(data: x)
+        guard let scorer = Scores[scoring] else {
+            print("scorer not found")
+            return 0
+        }
+        return scorer(y, predicted)
+    }
 }
 
 func preprocessX(_ xIn: Tensor<Float>, fitIntercept: Bool) -> Tensor<Float> {
@@ -30,22 +47,8 @@ func preprocessX(_ xIn: Tensor<Float>, fitIntercept: Bool) -> Tensor<Float> {
     return x
 }
 
-func r2Score(_ y: Tensor<Float>, _ predicted: Tensor<Float>) -> Float {
-    // func r2Score(true y: Tensor<Float>, pred predicted: Tensor<Float>) -> Float {
-    let SS_res = pow(y - predicted, 2).sum()
-    print(SS_res)
-    let SS_tot = pow(y - y.mean(), 2).sum()
-    print(SS_tot)
-    print(SS_res / SS_tot)
-    let score = 1 - (SS_res / SS_tot)
-    return Float(score.scalarized())
-}
-
 /// can use a dict for now, change to function with switch for more complcated cases
 let Scores = ["r2": r2Score]
-// enum Scores {
-//     case r2
-// }
 
 /// Linear regression implements Ordinary Least Squares.
 ///
@@ -86,12 +89,6 @@ struct OLSRegression: LinearRegressor {
 
     // \beta = (X^T dot X)^-1 dot X^T dot y
     mutating func fit(data x: Tensor<Float>, labels y: Tensor<Float>) {
-        // var x = x
-
-        // if self.fitIntercept {
-        //     x = x.concatenated(with: Tensor<Float>(ones: [x.shape[0], 1]),
-        //                         alongAxis: -1)
-        // }
         let x = preprocessX(x, fitIntercept: fitIntercept)
 
         weights = matmul(
@@ -103,29 +100,4 @@ struct OLSRegression: LinearRegressor {
             y
         )
     }
-
-    func predict(data x: Tensor<Float>) -> Tensor<Float> {
-        // let x = preprocessX(x)
-        let x = preprocessX(x, fitIntercept: fitIntercept)
-        return matmul(x, weights)
-    }
-
-    // r^2
-    func score(data x: Tensor<Float>, labels y: Tensor<Float>) -> Float {
-        let predicted = predict(data: x)
-        guard let scorer = Scores[scoring] else {
-            print("scorer not found")
-            return 0
-        }
-        return scorer(y, predicted)
-    }
-
-    // func preprocessX(_ x: Tensor<Float>) -> Tensor<Float> {
-    //     var x = x
-
-    //     if self.fitIntercept {
-    //         x = x.concatenated(with: Tensor<Float>(ones: [x.shape[0], 1]), alongAxis: -1)
-    //     }
-    //     return x
-    // }
 }
