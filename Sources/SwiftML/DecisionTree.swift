@@ -1,73 +1,16 @@
-import Foundation
 import TensorFlow
-
-// import PythonKit
-#if canImport(PythonKit)
-    import PythonKit
-#else
-    import Python
-#endif
-
-// import SwiftML
 
 // typealias IntValue = Int32
 
-protocol TreeEstimator {
+protocol TreeEstimator: Estimator {
     var featureImportances: Tensor<Float> { get }
+    // var scoring: String { get }
 
-    mutating func fit(data x: Tensor<Float>, labels y: Tensor<Float>)
+    // mutating func fit(data x: Tensor<Float>, labels y: Tensor<Float>)
 
-    func predict(data x: Tensor<Float>) -> Tensor<Float>
+    // func predict(data x: Tensor<Float>) -> Tensor<Float>
 
-    func score(data x: Tensor<Float>, labels y: Tensor<Float>) -> Float
-}
-
-typealias Matrix = Tensor<Float>
-
-extension Matrix {
-    func select(rows: [Int]) -> Matrix {
-        // guard rows != nil || cols != nil else {
-        //     print("not param provided")
-        //     return self
-        // }
-        var new: Matrix = Matrix(repeating: 0, shape: [rows.count, self.shape[1]]) // = NdArray()
-        for (i, row) in rows.enumerated() {
-            // let data = x.concatenated(with: y1d, alongAxis: 1)
-            // let row = self[Int(i)].reshaped(to: [1, self.shape[1]])
-            // let y1d = y.reshaped(to: [y.shape[0], 1])
-            // print("new: \(new.shape), row: \(row.shape)")
-            // new = new.concatenated(with: row, alongAxis: 0)
-            new[i, 0...] = self[row, 0...]
-            // new.replacing(with: row, where: new[Int(i), 0...].Index)
-            // print(row)
-        }
-        // return new[1..., 0...]
-        return new
-        // print(new[1..., 0...])
-        // return data
-    }
-
-    func select(cols: [Int]) -> Matrix {
-        var new: Matrix = Matrix(repeating: 0, shape: [self.shape[0], cols.count]) // = NdArray()
-        // print(new.shape)
-        // print(self.shape)
-        for (i, col) in cols.enumerated() {
-            new[0..., i] = self[0..., col]
-        }
-        return new
-    }
-
-    func select(rows: [Int], cols: [Int]) -> Matrix {
-        var new: Matrix = Matrix(repeating: 0, shape: [rows.count, cols.count]) // = NdArray()
-        // print(new.shape)
-        // print(self.shape)
-        for (i, row) in rows.enumerated() {
-            for (j, col) in cols.enumerated() {
-                new[i, j] = self[row, col]
-            }
-        }
-        return new
-    }
+    // func score(data x: Tensor<Float>, labels y: Tensor<Float>) -> Float
 }
 
 typealias ImpurityIndex = ([[Int]], [Int]) -> Float
@@ -407,20 +350,6 @@ struct BestFirstTreeBuilder {
     }
 }
 
-func accuracy(_ y: Tensor<Float>, _ pred: Tensor<Float>) -> Float {
-    // let y1d = y.reshaped(to: [y.shape[0], 1])
-    // print(y.shape)
-    // print(y1d.shape)
-    // print(pred.shape)
-    var cnt = 0.0
-    for i in 0 ..< y.shape[0] {
-        if y[i] == pred[i] {
-            cnt += 1
-        }
-    }
-    return Float(cnt / Double(y.shape[0]))
-}
-
 struct DecisionTree: TreeEstimator {
     var criterion, splitter: String
     var nFeatures: Int = 0
@@ -430,14 +359,17 @@ struct DecisionTree: TreeEstimator {
     var nClasses: Int = 0
     var tree: DTree?
     var featureImportances: Tensor<Float> { return Tensor(0) }
+    var scoring: String = "accuracy"
 
     init(criterion: String = "gini", splitter: String = "best",
          maxDepth: Int = -1,
-         maxFeatures: Int = -1, minSamplesSplit: Int = 1) {
+         maxFeatures: Int = -1, minSamplesSplit: Int = 1,
+         scoring: String = "accuracy") {
         (self.criterion, self.splitter) = (criterion, splitter)
         self.maxDepth = maxDepth
         self.maxFeatures = maxFeatures
         self.minSamplesSplit = minSamplesSplit
+        self.scoring = scoring
     }
 
     mutating func fit(data x: Tensor<Float>, labels y: Tensor<Float>) {
@@ -536,13 +468,5 @@ struct DecisionTree: TreeEstimator {
             if node.isEmpty { continue }
             print(node)
         }
-    }
-
-    func score(data x: Tensor<Float>, labels y: Tensor<Float>) -> Float {
-        let pred = predict(data: x)
-        let score = accuracy(y, pred)
-        // return score
-        // print("score: \(score)")
-        return score
     }
 }

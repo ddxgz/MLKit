@@ -162,3 +162,4 @@ func test_gini_2() {
 
 // test_tree_regression()
 test_gini_2()
+testOLS()

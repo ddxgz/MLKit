@@ -6,36 +6,18 @@ import TensorFlow
 //     import Python
 // #endif
 
-protocol LinearRegressor {
+protocol LinearRegressor: Estimator {
     var fitIntercept: Bool { get set }
     var weights: Tensor<Float> { get set }
     var intercept_: Tensor<Float> { get }
     var coef_: Tensor<Float> { get }
-    var scoring: String { get }
+    // var scoring: String { get }
 
-    mutating func fit(data x: Tensor<Float>, labels y: Tensor<Float>)
+    // mutating func fit(data x: Tensor<Float>, labels y: Tensor<Float>)
 
-    func predict(data x: Tensor<Float>) -> Tensor<Float>
+    // func predict(data x: Tensor<Float>) -> Tensor<Float>
 
-    func score(data x: Tensor<Float>, labels y: Tensor<Float>) -> Float
-}
-
-extension LinearRegressor {
-    func predict(data x: Tensor<Float>) -> Tensor<Float> {
-        // let x = preprocessX(x)
-        let x = preprocessX(x, fitIntercept: fitIntercept)
-        return matmul(x, weights)
-    }
-
-    // r^2
-    func score(data x: Tensor<Float>, labels y: Tensor<Float>) -> Float {
-        let predicted = predict(data: x)
-        guard let scorer = Scores[scoring] else {
-            print("scorer not found")
-            return 0
-        }
-        return scorer(y, predicted)
-    }
+    // func score(data x: Tensor<Float>, labels y: Tensor<Float>) -> Float
 }
 
 func preprocessX(_ xIn: Tensor<Float>, fitIntercept: Bool) -> Tensor<Float> {
@@ -46,9 +28,6 @@ func preprocessX(_ xIn: Tensor<Float>, fitIntercept: Bool) -> Tensor<Float> {
     }
     return x
 }
-
-/// can use a dict for now, change to function with switch for more complcated cases
-let Scores = ["r2": r2Score]
 
 /// Linear regression implements Ordinary Least Squares.
 ///
@@ -99,5 +78,11 @@ struct OLSRegression: LinearRegressor {
             ),
             y
         )
+    }
+
+    func predict(data x: Tensor<Float>) -> Tensor<Float> {
+        // let x = preprocessX(x)
+        let x = preprocessX(x, fitIntercept: fitIntercept)
+        return matmul(x, weights)
     }
 }
