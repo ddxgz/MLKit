@@ -13,23 +13,28 @@ protocol TreeEstimator: Estimator {
     // func score(data x: Tensor<Float>, labels y: Tensor<Float>) -> Float
 }
 
-typealias ImpurityIndex = ([[Int]], [Int]) -> Float
+/// A criterion function takes input of groups of labels (either classes or
+/// numerical values) in the form of array of 2 arraies [left, right]
+typealias CriterionFn = ([[Float]]) -> Float
 
-func giniImpurity(groups: [[Int]], classes: [Int]) -> Float {
-    var N = 0.0
+// func giniImpurity(_ groups: [[Float]], _ classes: [Float]) -> Float {
+func giniImpurity(_ groups: [[Float]]) -> Float {
+    let classes = groups.joined()
+    var N: Float = 0.0
     for group in groups {
-        N += Double(group.count)
+        N += Float(group.count)
+        // N += Double(group.count)
     }
     // print(N)
-    var gini = 0.0
+    var gini: Float = 0.0
     for group in groups {
-        let sizeG = Double(group.count)
+        let sizeG = Float(group.count)
         if sizeG == 0 { continue }
         /// sum((n_k/N)^2) for class k
-        var sumP = 0.0
+        var sumP: Float = 0.0
         for cls in classes {
             // let p = group.count(where: $0 == cls) / sizeG
-            let p = Double(group.filter { $0 == cls }.count) / sizeG
+            let p = Float(group.filter { $0 == cls }.count) / sizeG
             // print(p)
             sumP += p * p
         }
@@ -38,13 +43,37 @@ func giniImpurity(groups: [[Int]], classes: [Int]) -> Float {
     return Float(gini)
 }
 
+// func mseCriterion(_ groups: [[Float]], _ classes: [Float]) -> Float {
+func mseCriterion(_ groups: [[Float]]) -> Float {
+    var N: Float = 0.0
+    for group in groups {
+        N += Float(group.count)
+    }
+
+    var err: Float = 0
+
+    for group in groups {
+        let sizeG = Float(group.count)
+        if sizeG == 0 { continue }
+        let mean = group.reduce(0, +) / sizeG
+        print("group: \(group)")
+        print("mean: \(mean)")
+        // use a tensor fill with mean
+        let y = Tensor<Float>(repeating: mean, shape: [Int(sizeG), 1])
+        let yhat = Tensor<Float>(group)
+        err += meanSquaredErrorTF(y, yhat)
+    }
+    return err
+}
+
 /// can use a dict for now, change to function with switch for more complcated cases
 let Criteria = [
     "gini": giniImpurity,
-    // "mse": MSE,
+    "mse": mseCriterion,
 ]
 
 typealias Groups = (left: [Int], right: [Int])
+typealias LabelGroups = (left: [Float], right: [Float])
 
 class Node: CustomStringConvertible {
     var id: Int
@@ -173,7 +202,7 @@ class DTree {
 }
 
 struct BestFirstTreeBuilder {
-    let criterion: ImpurityIndex
+    let criterion: CriterionFn
     let isClassification: Bool
     var nFeatures: Int
     var classes: [Int]
@@ -181,7 +210,7 @@ struct BestFirstTreeBuilder {
     var maxDepth: Int
     var minSamplesSplit: Int
     var maxFeatures: Int
-    // var criterionFn: ImpurityIndex
+    // var criterionFn: CriterionFn
 
     func build(data: Matrix) -> DTree {
         let tree = DTree()
@@ -254,7 +283,7 @@ struct BestFirstTreeBuilder {
             // print("value: \(value)")
             node.value = value
         } else {
-            let sum = values.reduce(0,+)
+            let sum = values.reduce(0, +)
             node.value = sum / Float(values.count)
         }
         // print(node.value)
@@ -291,8 +320,7 @@ struct BestFirstTreeBuilder {
                 // print("sampleSplit: \(sampleSplit)")
                 let labelGroups = getLabelGroups(sampleSplit: sampleSplit, data: data)
                 // print("labelGroups: \(labelGroups)")
-                let score = criterion([labelGroups.left, labelGroups.right],
-                                      classes)
+                let score = criterion([labelGroups.left, labelGroups.right])
                 // print("score: \(score)")
                 if score < bstScore {
                     bstScore = score
@@ -333,16 +361,19 @@ struct BestFirstTreeBuilder {
         return (left, right)
     }
 
-    func getLabelGroups(sampleSplit idxGroups: Groups, data: Matrix) -> Groups {
-        var left = [Int](), right = [Int]()
+    func getLabelGroups(sampleSplit idxGroups: Groups, data: Matrix) -> LabelGroups {
+        // var left = [Int](), right = [Int]()
+        var left = [Float](), right = [Float]()
         for idx in idxGroups.left {
             let c = data[Int(idx), -1]
-            let v = Int(c.scalar!)
+            // let v = Int(c.scalar!)
+            let v = c.scalar!
             left.append(v)
         }
         for idx in idxGroups.right {
             let c = data[Int(idx), -1]
-            let v = Int(c.scalar!)
+            // let v = Int(c.scalar!)
+            let v = c.scalar!
             right.append(v)
         }
 

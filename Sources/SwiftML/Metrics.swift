@@ -2,8 +2,9 @@ import TensorFlow
 
 /// can use a dict for now, change to function with switch for more complcated
 /// cases
-let Scores = ["r2": r2Score,
-              "accuracy": accuracy]
+let Scores = ["r2": rSquared,
+              "accuracy": accuracy,
+              "mse": meanSquaredErrorTF]
 
 func accuracy(_ y: Tensor<Float>, _ pred: Tensor<Float>) -> Float {
     // let y1d = y.reshaped(to: [y.shape[0], 1])
@@ -19,7 +20,13 @@ func accuracy(_ y: Tensor<Float>, _ pred: Tensor<Float>) -> Float {
     return Float(cnt / Double(y.shape[0]))
 }
 
-func r2Score(_ y: Tensor<Float>, _ pred: Tensor<Float>) -> Float {
+func meanSquaredErrorTF(_ y: Tensor<Float>, _ pred: Tensor<Float>) -> Float {
+    // let errors = (y - pred)
+    let errors = TensorFlow.meanSquaredError(predicted: pred, expected: y)
+    return errors.scalar!
+}
+
+func rSquared(_ y: Tensor<Float>, _ pred: Tensor<Float>) -> Float {
     // func r2Score(true y: Tensor<Float>, pred predicted: Tensor<Float>) -> Float {
     let SS_res = pow(y - pred, 2).sum()
     print(SS_res)
