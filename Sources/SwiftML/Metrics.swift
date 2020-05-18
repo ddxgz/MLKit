@@ -29,10 +29,10 @@ func meanSquaredErrorTF(_ y: Tensor<Float>, _ pred: Tensor<Float>) -> Float {
 func rSquared(_ y: Tensor<Float>, _ pred: Tensor<Float>) -> Float {
     // func r2Score(true y: Tensor<Float>, pred predicted: Tensor<Float>) -> Float {
     let SS_res = pow(y - pred, 2).sum()
-    print(SS_res)
+    // print(SS_res)
     let SS_tot = pow(y - y.mean(), 2).sum()
-    print(SS_tot)
-    print(SS_res / SS_tot)
+    // print(SS_tot)
+    // print(SS_res / SS_tot)
     let score = 1 - (SS_res / SS_tot)
     return Float(score.scalarized())
 }

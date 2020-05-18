@@ -19,7 +19,8 @@ typealias CriterionFn = ([[Float]]) -> Float
 
 // func giniImpurity(_ groups: [[Float]], _ classes: [Float]) -> Float {
 func giniImpurity(_ groups: [[Float]]) -> Float {
-    let classes = groups.joined()
+    let classes = Set(groups.joined())
+    print("classes: \(classes)")
     var N: Float = 0.0
     for group in groups {
         N += Float(group.count)
@@ -35,7 +36,7 @@ func giniImpurity(_ groups: [[Float]]) -> Float {
         for cls in classes {
             // let p = group.count(where: $0 == cls) / sizeG
             let p = Float(group.filter { $0 == cls }.count) / sizeG
-            // print(p)
+            print(p)
             sumP += p * p
         }
         gini += (1.0 - sumP) * (sizeG / N)
@@ -56,8 +57,8 @@ func mseCriterion(_ groups: [[Float]]) -> Float {
         let sizeG = Float(group.count)
         if sizeG == 0 { continue }
         let mean = group.reduce(0, +) / sizeG
-        print("group: \(group)")
-        print("mean: \(mean)")
+        // print("group: \(group)")
+        // print("mean: \(mean)")
         // use a tensor fill with mean
         let y = Tensor<Float>(repeating: mean, shape: [Int(sizeG), 1])
         let yhat = Tensor<Float>(group)
@@ -90,7 +91,8 @@ class Node: CustomStringConvertible {
     var value: Float?
     var groups: Groups
 
-    init(id: Int, depth: Int, feature: Int, splitValue: Float, score: Float, groups: Groups) {
+    init(id: Int, depth: Int, feature: Int, splitValue: Float, score: Float,
+         groups: Groups) {
         self.isEmpty = false
         self.id = id
         self.depth = depth
@@ -308,21 +310,23 @@ struct BestFirstTreeBuilder {
     }
 
     func addSplitNode(data: Matrix, depth: Int, isFirst: Bool, isLeft: Bool?, parent: Node?) -> Node {
-        var bstScore: Float = 1
+        var bstScore: Float?
         var bstCol: Int = 0
         var bstSplitValue: Float = -1
         var bstGroups: Groups?
         var nodeId: Int = 0
 
-        for col in 0 ..< nFeatures - 1 {
+        for col in 0 ..< nFeatures {
+            print(col)
             for value in data[0..., col].scalars {
                 let sampleSplit = getSampleSplit(col: col, splitBy: value, data: data)
                 // print("sampleSplit: \(sampleSplit)")
                 let labelGroups = getLabelGroups(sampleSplit: sampleSplit, data: data)
                 // print("labelGroups: \(labelGroups)")
                 let score = criterion([labelGroups.left, labelGroups.right])
-                // print("score: \(score)")
-                if score < bstScore {
+                print("score: \(score)")
+                print("bstScore: \(bstScore)")
+                if bstScore == nil || score < bstScore! {
                     bstScore = score
                     bstCol = col
                     bstSplitValue = value
@@ -343,7 +347,7 @@ struct BestFirstTreeBuilder {
             print("Should provide isLeft and parent node if not first!")
         }
         // print("bstGroups: \(bstGroups)")
-        return Node(id: nodeId, depth: depth, feature: bstCol, splitValue: bstSplitValue, score: bstScore,
+        return Node(id: nodeId, depth: depth, feature: bstCol, splitValue: bstSplitValue, score: bstScore!,
                     groups: bstGroups!)
     }
 
@@ -394,7 +398,7 @@ struct DecisionTree: TreeEstimator {
 
     init(criterion: String = "gini", splitter: String = "best",
          maxDepth: Int = -1,
-         maxFeatures: Int = -1, minSamplesSplit: Int = 1,
+         maxFeatures: Int = -1, minSamplesSplit: Int = 2,
          scoring: String = "accuracy") {
         (self.criterion, self.splitter) = (criterion, splitter)
         self.maxDepth = maxDepth
@@ -453,7 +457,14 @@ struct DecisionTree: TreeEstimator {
             print("criterion not found")
             return
         }
-        let isClassification = true
+
+        var isClassification: Bool
+        if criterion == "gini" {
+            isClassification = true
+        } else {
+            isClassification = false
+        }
+        print("isClassification: \(isClassification)")
 
         /// wrap x and y to a 2d tensor, with y as -1 col
         let y1d = y.reshaped(to: [y.shape[0], 1])
@@ -480,8 +491,9 @@ struct DecisionTree: TreeEstimator {
 
     func predict(data x: Tensor<Float>) -> Tensor<Float> {
         let proba = tree!.predict(x)
-        // print(proba)
-        let result = Tensor<Float>(proba)
+        print(proba)
+        // let result = Tensor<Float>(proba)
+        let result = Tensor<Float>(proba).reshaped(to: [proba.count, 1])
         // print(type(of:result))
         // print(result.shape)
         return result
