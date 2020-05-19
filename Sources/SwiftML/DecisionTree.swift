@@ -20,7 +20,7 @@ typealias CriterionFn = ([[Float]]) -> Float
 // func giniImpurity(_ groups: [[Float]], _ classes: [Float]) -> Float {
 func giniImpurity(_ groups: [[Float]]) -> Float {
     let classes = Set(groups.joined())
-    print("classes: \(classes)")
+    // print("classes: \(classes)")
     var N: Float = 0.0
     for group in groups {
         N += Float(group.count)
@@ -36,7 +36,7 @@ func giniImpurity(_ groups: [[Float]]) -> Float {
         for cls in classes {
             // let p = group.count(where: $0 == cls) / sizeG
             let p = Float(group.filter { $0 == cls }.count) / sizeG
-            print(p)
+            // print(p)
             sumP += p * p
         }
         gini += (1.0 - sumP) * (sizeG / N)
@@ -63,6 +63,7 @@ func mseCriterion(_ groups: [[Float]]) -> Float {
         let y = Tensor<Float>(repeating: mean, shape: [Int(sizeG), 1])
         let yhat = Tensor<Float>(group)
         err += meanSquaredErrorTF(y, yhat)
+        // print("err: \(err)")
     }
     return err
 }
@@ -77,7 +78,7 @@ typealias Groups = (left: [Int], right: [Int])
 typealias LabelGroups = (left: [Float], right: [Float])
 
 class Node: CustomStringConvertible {
-    var id: Int
+    // var id: Int
     var isEmpty: Bool
     var leftChild: Int?
     var rightChild: Int?
@@ -91,10 +92,10 @@ class Node: CustomStringConvertible {
     var value: Float?
     var groups: Groups
 
-    init(id: Int, depth: Int, feature: Int, splitValue: Float, score: Float,
+    init(depth: Int, feature: Int, splitValue: Float, score: Float,
          groups: Groups) {
         self.isEmpty = false
-        self.id = id
+        // self.id = id
         self.depth = depth
         self.feature = feature
         self.splitValue = splitValue
@@ -104,7 +105,7 @@ class Node: CustomStringConvertible {
 
     init(isEmpty: Bool) {
         self.isEmpty = true
-        self.id = -1
+        // self.id = -1
         self.depth = -1
         self.feature = -1
         self.splitValue = -1
@@ -116,10 +117,13 @@ class Node: CustomStringConvertible {
         if isEmpty { return "[empty node]" }
 
         let space = String(repeating: " ", count: depth * 2)
-        var desc = "\(space)id: \(id), leaf: \(isLeaf), "
+        // var desc = "\(space)id: \(id), leaf: \(isLeaf), "
+        var desc = "\(space)leaf: \(isLeaf), "
 
         // let possibleValue = value ?? 0.0
-        if isLeaf { desc += "value: \(value!), " }
+        if isLeaf { desc += "value: \(value!), " } else {
+            desc += "left child: \(leftChild!), right child: \(rightChild!), "
+        }
 
         return desc + """
         feature: \(feature), splitValue: \(splitValue), score: \(score)
@@ -133,31 +137,46 @@ class Node: CustomStringConvertible {
 class DTree {
     var nodes: [Node]
     init() { nodes = [Node]() }
+
     func addNode(_ node: Node) {
         // nodes.append(node)
         // print("nodes count: \(nodes.count)")
         // print("nodes cap: \(nodes.capacity)")
         // print("adding node: \(node.id)")
-        if (node.id - 1) >= nodes.count {
-            // nodes.reserveCapacity(node.id * 2 + 1)
-            paddingEmptyNodes(node.id * 2 + 1)
-        }
+        // if (node.id - 1) >= nodes.count {
+        //     // nodes.reserveCapacity(node.id * 2 + 1)
+        //     paddingEmptyNodes(node.id * 2 + 1)
+        // }
 
         // print("nodes count: \(nodes.count)")
-        nodes.insert(node, at: node.id - 1)
+        // nodes.insert(node, at: node.id - 1)
+        nodes.append(node)
     }
 
-    func addLeftChild(parent: Node, child: Node) {
-        child.id = parent.id * 2
-        parent.leftChild = child.id
-        nodes.insert(child, at: parent.id * 2 - 1)
+    func addNode(_ node: Node, parent: Node?, isLeft: Bool) {
+        if parent != nil {
+            let nodeId = nodes.count
+            if isLeft {
+                parent!.leftChild = nodeId
+            } else {
+                parent!.rightChild = nodeId
+            }
+        }
+        nodes.append(node)
+        // return node
     }
 
-    func addRightChild(parent: Node, child: Node) {
-        child.id = parent.id * 2 + 1
-        parent.rightChild = child.id
-        nodes.insert(child, at: parent.id * 2)
-    }
+    // func addLeftChild(parent: Node, child: Node) {
+    //     child.id = parent.id * 2
+    //     parent.leftChild = child.id
+    //     nodes.insert(child, at: parent.id * 2 - 1)
+    // }
+
+    // func addRightChild(parent: Node, child: Node) {
+    //     child.id = parent.id * 2 + 1
+    //     parent.rightChild = child.id
+    //     nodes.insert(child, at: parent.id * 2)
+    // }
 
     func paddingEmptyNodes(_ size: Int) {
         // print("padding emptyNodes")
@@ -179,7 +198,7 @@ class DTree {
             while node.isLeaf != true {
                 // print("in node: \(node)")
                 // print("data value to compare: \(x[i, node.feature].scalar)")
-                if x[i, node.feature].scalar! < node.splitValue {
+                if x[i, node.feature].scalar! <= node.splitValue {
                     node = leftChild(node)
                 } else {
                     node = rightChild(node)
@@ -195,11 +214,13 @@ class DTree {
     }
 
     func leftChild(_ parent: Node) -> Node {
-        return nodes[parent.id * 2 - 1]
+        // return nodes[parent.id * 2 - 1]
+        return nodes[parent.leftChild!]
     }
 
     func rightChild(_ parent: Node) -> Node {
-        return nodes[parent.id * 2]
+        // return nodes[parent.id * 2]
+        return nodes[parent.rightChild!]
     }
 }
 
@@ -211,13 +232,14 @@ struct BestFirstTreeBuilder {
     var nOutputs: Int
     var maxDepth: Int
     var minSamplesSplit: Int
+    var minSamplesLeaf: Int
     var maxFeatures: Int
     // var criterionFn: CriterionFn
 
     func build(data: Matrix) -> DTree {
         let tree = DTree()
         let depth = 0
-        let node = addSplitNode(data: data, depth: depth, isFirst: true, isLeft: nil, parent: nil)
+        let node = addSplitNode(tree: tree, data: data, depth: depth, isFirst: true, isLeft: nil, parent: nil)
         tree.addNode(node)
 
         splitNode(tree: tree, node: node, data: data, depth: depth + 1)
@@ -225,6 +247,7 @@ struct BestFirstTreeBuilder {
         return tree
     }
 
+    // TODO: impurity improvement
     func splitNode(tree: DTree, node: Node, data: Matrix, depth: Int) {
         if isLeaf(node) {
             // print("rearched Leaf")
@@ -234,20 +257,21 @@ struct BestFirstTreeBuilder {
         let (left, right) = node.groups
         // let leftData = dataSample(idx: left, data: data)
         let leftData = data.select(rows: left)
-        let leftNode = addSplitNode(data: leftData, depth: depth, isFirst: false, isLeft: true, parent: node)
+        let leftNode = addSplitNode(tree: tree, data: leftData, depth: depth, isFirst: false, isLeft: true, parent: node)
         // tree.addLeftChild(parent: node, child: leftNode)
-        tree.addNode(leftNode)
+        // tree.addNode(leftNode)
 
         // let rightData = dataSample(idx: right, data: data)
         let rightData = data.select(rows: right)
-        let rightNode = addSplitNode(data: rightData, depth: depth, isFirst: false, isLeft: false, parent: node)
+        let rightNode = addSplitNode(tree: tree, data: rightData, depth: depth, isFirst: false, isLeft: false, parent: node)
         // tree.addRightChild(parent: node, child: rightNode)
-        tree.addNode(rightNode)
+        // tree.addNode(rightNode)
 
         splitNode(tree: tree, node: leftNode, data: leftData, depth: depth + 1)
         splitNode(tree: tree, node: rightNode, data: rightData, depth: depth + 1)
     }
 
+    /// replaced by Matrix.select
     func dataSample(idx: [Int32], data: Matrix) -> Matrix {
         var new: Matrix = Matrix(repeating: 0, shape: [1, data.shape[1]]) // = NdArray()
         for i in idx {
@@ -303,29 +327,37 @@ struct BestFirstTreeBuilder {
         if node.depth >= maxDepth {
             return true
         }
-        if node.groups.left.count < minSamplesSplit || node.groups.right.count < minSamplesSplit {
+        if node.groups.left.count < minSamplesLeaf || node.groups.right.count < minSamplesLeaf {
+            return true
+        }
+        if (node.groups.left.count + node.groups.right.count) < minSamplesSplit {
+            return true
+        }
+        /// For both classification and regression. Either the node is pure or
+        /// no variance in node, it should be a leaf.
+        if node.score == 0 {
             return true
         }
         return false
     }
 
-    func addSplitNode(data: Matrix, depth: Int, isFirst: Bool, isLeft: Bool?, parent: Node?) -> Node {
+    func addSplitNode(tree: DTree, data: Matrix, depth: Int, isFirst: Bool, isLeft: Bool?, parent: Node?) -> Node {
         var bstScore: Float?
         var bstCol: Int = 0
         var bstSplitValue: Float = -1
         var bstGroups: Groups?
-        var nodeId: Int = 0
+        // var nodeId: Int = 0
 
         for col in 0 ..< nFeatures {
-            print(col)
+            // print(col)
             for value in data[0..., col].scalars {
                 let sampleSplit = getSampleSplit(col: col, splitBy: value, data: data)
                 // print("sampleSplit: \(sampleSplit)")
                 let labelGroups = getLabelGroups(sampleSplit: sampleSplit, data: data)
                 // print("labelGroups: \(labelGroups)")
                 let score = criterion([labelGroups.left, labelGroups.right])
-                print("score: \(score)")
-                print("bstScore: \(bstScore)")
+                // print("score: \(score)")
+                // print("bstScore: \(bstScore)")
                 if bstScore == nil || score < bstScore! {
                     bstScore = score
                     bstCol = col
@@ -335,20 +367,25 @@ struct BestFirstTreeBuilder {
                 }
             }
         }
-        if isFirst {
-            nodeId = 1
-        } else if parent != nil, isLeft != nil {
-            if isLeft! {
-                nodeId = parent!.id * 2
-            } else {
-                nodeId = parent!.id * 2 + 1
-            }
-        } else {
-            print("Should provide isLeft and parent node if not first!")
-        }
+        // if isFirst {
+        //     nodeId = 1
+        // } else if parent != nil, isLeft != nil {
+        //     if isLeft! {
+        //         nodeId = parent!.id * 2
+        //     } else {
+        //         nodeId = parent!.id * 2 + 1
+        //     }
+        // } else {
+        //     print("Should provide isLeft and parent node if not first!")
+        // }
         // print("bstGroups: \(bstGroups)")
-        return Node(id: nodeId, depth: depth, feature: bstCol, splitValue: bstSplitValue, score: bstScore!,
-                    groups: bstGroups!)
+
+        let node = Node(depth: depth, feature: bstCol, splitValue: bstSplitValue, score: bstScore!,
+                        groups: bstGroups!)
+        if let unwrapLeft = isLeft {
+            tree.addNode(node, parent: parent, isLeft: unwrapLeft)
+        }
+        return node
     }
 
     func getSampleSplit(col: Int, splitBy: Float, data: Matrix) -> Groups {
@@ -356,7 +393,7 @@ struct BestFirstTreeBuilder {
         for (idx, value) in data[0..., col].scalars.enumerated() {
             let rowIdx = Int(idx)
 
-            if value < splitBy {
+            if value <= splitBy {
                 left.append(rowIdx)
             } else {
                 right.append(rowIdx)
@@ -391,6 +428,10 @@ struct DecisionTree: TreeEstimator {
     var maxDepth: Int
     var maxFeatures: Int
     var minSamplesSplit: Int
+    var minSamplesLeaf: Int
+    /// Impurity threshold used for split early stop
+    // TODO: not yet really supported!
+    var minImpurityDecrease: Float
     var nClasses: Int = 0
     var tree: DTree?
     var featureImportances: Tensor<Float> { return Tensor(0) }
@@ -398,18 +439,26 @@ struct DecisionTree: TreeEstimator {
 
     init(criterion: String = "gini", splitter: String = "best",
          maxDepth: Int = -1,
-         maxFeatures: Int = -1, minSamplesSplit: Int = 2,
+         maxFeatures: Int = -1, minSamplesSplit: Int = 2, minSamplesLeaf: Int = 1,
+         minImpurityDecrease: Float = 0,
          scoring: String = "accuracy") {
         (self.criterion, self.splitter) = (criterion, splitter)
         self.maxDepth = maxDepth
         self.maxFeatures = maxFeatures
         self.minSamplesSplit = minSamplesSplit
+        self.minSamplesLeaf = minSamplesLeaf
+        if minImpurityDecrease < 0 {
+            print("minImpurityDecrease must be >= 0, it is now set to 0")
+            self.minImpurityDecrease = 0
+        } else {
+            self.minImpurityDecrease = minImpurityDecrease
+        }
         self.scoring = scoring
     }
 
     mutating func fit(data x: Tensor<Float>, labels y: Tensor<Float>) {
         //// check input data is 2d
-        print(x.shape)
+        // print(x.shape)
 
         let nSamples = Int(x.shape[0])
         self.nFeatures = Int(x.shape[1])
@@ -446,7 +495,8 @@ struct DecisionTree: TreeEstimator {
 
         //// check parameters
         if maxDepth == -1 {
-            maxDepth = 9999
+            // maxDepth = 9999
+            maxDepth = Int.max
         }
 
         if maxFeatures == -1 || maxFeatures > nFeatures {
@@ -483,6 +533,7 @@ struct DecisionTree: TreeEstimator {
                                            classes: classesEnc, nOutputs: nOutputs,
                                            maxDepth: maxDepth,
                                            minSamplesSplit: self.minSamplesSplit,
+                                           minSamplesLeaf: self.minSamplesLeaf,
                                            maxFeatures: maxFeatures)
 
         tree = builder.build(data: data)
@@ -490,6 +541,7 @@ struct DecisionTree: TreeEstimator {
     }
 
     func predict(data x: Tensor<Float>) -> Tensor<Float> {
+        // print(x)
         let proba = tree!.predict(x)
         print(proba)
         // let result = Tensor<Float>(proba)
@@ -507,9 +559,9 @@ struct DecisionTree: TreeEstimator {
         let tree = self.tree!
         // printNode(node: node, depth: 0)
         // print(tree.nodes)
-        for node in tree.nodes {
+        for (i, node) in tree.nodes.enumerated() {
             if node.isEmpty { continue }
-            print(node)
+            print(i, node)
         }
     }
 }
