@@ -1,5 +1,13 @@
 import TensorFlow
 
+#if canImport(PythonKit)
+    import PythonKit
+#else
+    import Python
+#endif
+
+// let np = Python.import("numpy")
+
 // typealias IntValue = Int32
 
 protocol TreeEstimator: Estimator {
@@ -45,7 +53,7 @@ func giniImpurity(_ groups: [[Float]]) -> Float {
 }
 
 // func mseCriterion(_ groups: [[Float]], _ classes: [Float]) -> Float {
-func mseCriterion(_ groups: [[Float]]) -> Float {
+func mseCriterionV1(_ groups: [[Float]]) -> Float {
     var N: Float = 0.0
     for group in groups {
         N += Float(group.count)
@@ -63,6 +71,31 @@ func mseCriterion(_ groups: [[Float]]) -> Float {
         let y = Tensor<Float>(repeating: mean, shape: [Int(sizeG), 1])
         let yhat = Tensor<Float>(group)
         err += meanSquaredErrorTF(y, yhat)
+        // print("err: \(err)")
+    }
+    return err
+}
+
+func mseCriterion(_ groups: [[Float]]) -> Float {
+    var N: Float = 0.0
+    for group in groups {
+        N += Float(group.count)
+    }
+
+    var err: Float = 0
+
+    for group in groups {
+        let sizeG = Float(group.count)
+        if sizeG == 0 { continue }
+        let mean = group.reduce(0, +) / sizeG
+        // // print("group: \(group)")
+        // // print("mean: \(mean)")
+        // // use a tensor fill with mean
+        // let y = Tensor<Float>(repeating: mean, shape: [Int(sizeG), 1])
+        // let yhat = Tensor<Float>(group)
+        // err += meanSquaredErrorTF(y, yhat)
+        let diff = group.map { pow($0 - mean, 2) }
+        err += diff.reduce(0, +) / sizeG
         // print("err: \(err)")
     }
     return err
@@ -91,6 +124,8 @@ class Node: CustomStringConvertible {
     var isLeaf: Bool = false
     var value: Float?
     var groups: Groups
+
+    var nSamples: Int { groups.left.count + groups.right.count }
 
     init(depth: Int, feature: Int, splitValue: Float, score: Float,
          groups: Groups) {
@@ -121,12 +156,13 @@ class Node: CustomStringConvertible {
         var desc = "\(space)leaf: \(isLeaf), "
 
         // let possibleValue = value ?? 0.0
-        if isLeaf { desc += "value: \(value!), " } else {
+        if isLeaf { desc += "value: \(value!), n_samples: \(nSamples), " } else {
             desc += "left child: \(leftChild!), right child: \(rightChild!), "
+            desc += "groups: [\(groups.left.count) \(groups.right.count)], "
         }
 
         return desc + """
-        feature: \(feature), splitValue: \(splitValue), score: \(score)
+        feature: \(feature), splitValue: \(splitValue), score: \(score), 
         """
     }
 }
@@ -163,7 +199,6 @@ class DTree {
             }
         }
         nodes.append(node)
-        // return node
     }
 
     // func addLeftChild(parent: Node, child: Node) {
@@ -224,6 +259,15 @@ class DTree {
     }
 }
 
+func notConstant(_ data: Matrix) -> Bool {
+    let vset = Set(data.scalars)
+    if vset.count == 1 {
+        print(data)
+        return false
+    }
+    return true
+}
+
 struct BestFirstTreeBuilder {
     let criterion: CriterionFn
     let isClassification: Bool
@@ -236,7 +280,13 @@ struct BestFirstTreeBuilder {
     var maxFeatures: Int
     // var criterionFn: CriterionFn
 
-    func build(data: Matrix) -> DTree {
+    func build(data dataIn: Matrix) -> DTree {
+        var colsUse = [Int]()
+        for col in 0 ..< dataIn.shape[1] {
+            if notConstant(dataIn[0..., col]) { colsUse.append(col) }
+        }
+        let data = dataIn.select(cols: colsUse)
+
         let tree = DTree()
         let depth = 0
         let node = addSplitNode(tree: tree, data: data, depth: depth, isFirst: true, isLeft: nil, parent: nil)
@@ -320,24 +370,27 @@ struct BestFirstTreeBuilder {
     func isLeaf(_ node: Node) -> Bool {
         // guard node.groups != nil else { return true }
 
-        // if node.groups.left == nil || node.groups.right == nil {
-        if node.groups.left.count == 0 || node.groups.right.count == 0 {
-            return true
-        }
-        if node.depth >= maxDepth {
-            return true
-        }
-        if node.groups.left.count < minSamplesLeaf || node.groups.right.count < minSamplesLeaf {
-            return true
-        }
-        if (node.groups.left.count + node.groups.right.count) < minSamplesSplit {
-            return true
-        }
+        // print(node)
         /// For both classification and regression. Either the node is pure or
         /// no variance in node, it should be a leaf.
         if node.score == 0 {
             return true
         }
+        // if node.groups.left == nil || node.groups.right == nil {
+        if node.groups.left.count == 0 || node.groups.right.count == 0 {
+            print(node.groups)
+            return true
+        }
+        // if (node.groups.left.count + node.groups.right.count) < 2 * minSamplesLeaf {
+        //     return true
+        // }
+        if (node.groups.left.count + node.groups.right.count) <= minSamplesSplit {
+            return true
+        }
+        if node.depth >= maxDepth {
+            return true
+        }
+
         return false
     }
 
@@ -348,24 +401,80 @@ struct BestFirstTreeBuilder {
         var bstGroups: Groups?
         // var nodeId: Int = 0
 
+        // print(data.shape)
+        if data.shape[0] <= minSamplesLeaf {
+            var left = [Int](), right = [Int]()
+            for (idx, value) in data[0..., 0].scalars.enumerated() {
+                let rowIdx = Int(idx)
+                left.append(rowIdx)
+            }
+            let sampleSplit = (left, right)
+
+            let labelGroups = getLabelGroups(sampleSplit: sampleSplit, data: data)
+            let score = criterion([labelGroups.left, labelGroups.right])
+
+            let node = Node(depth: depth, feature: -1, splitValue: bstSplitValue, score: score,
+                            groups: sampleSplit)
+            if let unwrapLeft = isLeft {
+                tree.addNode(node, parent: parent, isLeft: unwrapLeft)
+            }
+            return node
+        }
+
         for col in 0 ..< nFeatures {
             // print(col)
-            for value in data[0..., col].scalars {
-                let sampleSplit = getSampleSplit(col: col, splitBy: value, data: data)
+            let argsortIdx = np.argsort(data[0..., col].makeNumpyArray())
+            // for value in data[0..., col].scalars {
+            // let range = [Int](minSamplesLeaf, Int(argsortIdx.shape[0])! -
+            // minSamplesLeaf)
+            // print(Python.type(argsortIdx))
+            // print(argsortIdx)
+            let range64: [Int64] = Array(numpy: argsortIdx)!
+            let range = range64.map { Int($0) }
+            // let range = ShapedArray<Int32>(numpy: argsortIdx)!
+            // if range.count <= minSamplesLeaf
+            // for rowIdx in range[(minSamplesLeaf - 1) ..< (Int(range.count) - minSamplesLeaf)] {
+            for (i, rowIdx) in range.enumerated() {
+                if i < minSamplesLeaf {
+                    continue
+                }
+
+                let valueTensor = data[Int(rowIdx), col]
+                // print("before grt value")
+                let value = valueTensor.scalar!
+                // print("after grt value")
+
+                // let sampleSplit = getSampleSplit(col: col, splitBy: value, data: data)
+                let sampleLeft = [Int](range[0 ..< i])
+                let sampleRight = [Int](range[i...])
+                let sampleSplit: Groups = (sampleLeft, sampleRight)
+                // let labelLeft = data.select(row: sampleLeft, col: -1)
+                // let labelRight = data.select(row: sampleRight, col: -1)
+
                 // print("sampleSplit: \(sampleSplit)")
                 let labelGroups = getLabelGroups(sampleSplit: sampleSplit, data: data)
+
                 // print("labelGroups: \(labelGroups)")
                 let score = criterion([labelGroups.left, labelGroups.right])
+
+                // let score = criterion([labelLeft, labelRight])
+
                 // print("score: \(score)")
                 // print("bstScore: \(bstScore)")
                 if bstScore == nil || score < bstScore! {
                     bstScore = score
                     bstCol = col
                     bstSplitValue = value
-                    // bstGroups = groups
                     bstGroups = sampleSplit
+                    // bstGroups = (left: sampleLeft, right: sampleRight)
                 }
+                if i >= Int(range.count) - minSamplesLeaf - 1 {
+                    break
+                }
+
+                if bstScore == 0 { break }
             }
+            if bstScore == 0 { break }
         }
         // if isFirst {
         //     nodeId = 1
@@ -388,6 +497,8 @@ struct BestFirstTreeBuilder {
         return node
     }
 
+    // TODO: handle when the splitBy is the smallest or largest, ont of the
+    /// group will be empty
     func getSampleSplit(col: Int, splitBy: Float, data: Matrix) -> Groups {
         var left = [Int](), right = [Int]()
         for (idx, value) in data[0..., col].scalars.enumerated() {
@@ -498,6 +609,7 @@ struct DecisionTree: TreeEstimator {
             // maxDepth = 9999
             maxDepth = Int.max
         }
+        print("maxDepth \(maxDepth)")
 
         if maxFeatures == -1 || maxFeatures > nFeatures {
             maxFeatures = nFeatures
