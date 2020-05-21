@@ -21,7 +21,6 @@ protocol TreeEstimator: Estimator {
     // func score(data x: Tensor<Float>, labels y: Tensor<Float>) -> Float
 }
 
-
 typealias Groups = (left: [Int], right: [Int])
 typealias LabelGroups = (left: [Float], right: [Float])
 
@@ -340,18 +339,10 @@ struct BestFirstTreeBuilder {
 
         for col in 0 ..< nFeatures {
             // print(col)
-            let argsortIdx = np.argsort(data[0..., col].makeNumpyArray())
-            // for value in data[0..., col].scalars {
-            // let range = [Int](minSamplesLeaf, Int(argsortIdx.shape[0])! -
-            // minSamplesLeaf)
-            // print(Python.type(argsortIdx))
-            // print(argsortIdx)
-            let range64: [Int64] = Array(numpy: argsortIdx)!
-            let range = range64.map { Int($0) }
-            // let range = ShapedArray<Int32>(numpy: argsortIdx)!
-            // if range.count <= minSamplesLeaf
-            // for rowIdx in range[(minSamplesLeaf - 1) ..< (Int(range.count) - minSamplesLeaf)] {
-            for (i, rowIdx) in range.enumerated() {
+            let s = data[0..., col].scalars
+            let argsortIdx = s.indices.sorted { s[$0] < s[$1] }
+
+            for (i, rowIdx) in argsortIdx.enumerated() {
                 if i < minSamplesLeaf {
                     continue
                 }
@@ -362,8 +353,8 @@ struct BestFirstTreeBuilder {
                 // print("after grt value")
 
                 // let sampleSplit = getSampleSplit(col: col, splitBy: value, data: data)
-                let sampleLeft = [Int](range[0 ..< i])
-                let sampleRight = [Int](range[i...])
+                let sampleLeft = [Int](argsortIdx[0 ..< i])
+                let sampleRight = [Int](argsortIdx[i...])
                 let sampleSplit: Groups = (sampleLeft, sampleRight)
                 // let labelLeft = data.select(row: sampleLeft, col: -1)
                 // let labelRight = data.select(row: sampleRight, col: -1)
@@ -386,7 +377,7 @@ struct BestFirstTreeBuilder {
                     bstGroups = sampleSplit
                     // bstGroups = (left: sampleLeft, right: sampleRight)
                 }
-                if i >= Int(range.count) - minSamplesLeaf - 1 {
+                if i >= Int(argsortIdx.count) - minSamplesLeaf - 1 {
                     break
                 }
 
