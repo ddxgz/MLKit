@@ -11,7 +11,15 @@ import TensorFlow
 // typealias IntValue = Int32
 
 protocol TreeEstimator: Estimator {
+    var criterion: String { get set }
+    var nFeatures: Int { get set }
+    var nClasses: Int { get set }
+    var maxDepth: Int { get set }
+    var maxFeatures: Int { get set }
+    var minSamplesSplit: Int { get set }
+    var minSamplesLeaf: Int { get set }
     var featureImportances: Tensor<Float> { get }
+    var tree: DTree? { get set }
     // var scoring: String { get }
 
     // mutating func fit(data x: Tensor<Float>, labels y: Tensor<Float>)
@@ -442,43 +450,7 @@ struct BestFirstTreeBuilder {
     }
 }
 
-struct DecisionTree: TreeEstimator {
-    // var criterion, splitter: String
-    var criterion: String
-    var nFeatures: Int = 0
-    var maxDepth: Int
-    var maxFeatures: Int
-    var minSamplesSplit: Int
-    var minSamplesLeaf: Int
-    /// Impurity threshold used for split early stop
-    // TODO: not yet really supported!
-    var minImpurityDecrease: Float
-    var nClasses: Int = 0
-    var tree: DTree?
-    var featureImportances: Tensor<Float> { return Tensor(0) }
-    var scoring: String = "accuracy"
-
-    //  splitter: String = "best",
-    init(criterion: String = "gini",
-         maxDepth: Int = -1,
-         maxFeatures: Int = -1, minSamplesSplit: Int = 2, minSamplesLeaf: Int = 1,
-         minImpurityDecrease: Float = 0,
-         scoring: String = "accuracy") {
-        // (self.criterion, self.splitter) = (criterion, splitter)
-        self.criterion = criterion
-        self.maxDepth = maxDepth
-        self.maxFeatures = maxFeatures
-        self.minSamplesSplit = minSamplesSplit
-        self.minSamplesLeaf = minSamplesLeaf
-        if minImpurityDecrease < 0 {
-            print("minImpurityDecrease must be >= 0, it is now set to 0")
-            self.minImpurityDecrease = 0
-        } else {
-            self.minImpurityDecrease = minImpurityDecrease
-        }
-        self.scoring = scoring
-    }
-
+extension TreeEstimator {
     mutating func fit(data x: Tensor<Float>, labels y: Tensor<Float>) {
         //// check input data is 2d
         // print(x.shape)
@@ -591,5 +563,81 @@ struct DecisionTree: TreeEstimator {
             if node.isEmpty { continue }
             print(i, node)
         }
+    }
+}
+
+struct DecisionTreeClassifier: TreeEstimator {
+    // var criterion, splitter: String
+    var criterion: String
+    var nFeatures: Int = 0
+    var nClasses: Int = 0
+    var maxDepth: Int
+    var maxFeatures: Int
+    var minSamplesSplit: Int
+    var minSamplesLeaf: Int
+    /// Impurity threshold used for split early stop
+    // TODO: not yet really supported!
+    var minImpurityDecrease: Float
+    var tree: DTree?
+    var featureImportances: Tensor<Float> { return Tensor(0) }
+    var scoring: String = "accuracy"
+
+    //  splitter: String = "best",
+    init(criterion: String = "gini",
+         maxDepth: Int = -1,
+         maxFeatures: Int = -1, minSamplesSplit: Int = 2, minSamplesLeaf: Int = 1,
+         minImpurityDecrease: Float = 0,
+         scoring: String = "accuracy") {
+        // (self.criterion, self.splitter) = (criterion, splitter)
+        self.criterion = criterion
+        self.maxDepth = maxDepth
+        self.maxFeatures = maxFeatures
+        self.minSamplesSplit = minSamplesSplit
+        self.minSamplesLeaf = minSamplesLeaf
+        if minImpurityDecrease < 0 {
+            print("minImpurityDecrease must be >= 0, it is now set to 0")
+            self.minImpurityDecrease = 0
+        } else {
+            self.minImpurityDecrease = minImpurityDecrease
+        }
+        self.scoring = scoring
+    }
+}
+
+struct DecisionTreeRegressor: TreeEstimator {
+    // var criterion, splitter: String
+    var criterion: String
+    var nFeatures: Int = 0
+    var nClasses: Int = 0
+    var maxDepth: Int
+    var maxFeatures: Int
+    var minSamplesSplit: Int
+    var minSamplesLeaf: Int
+    /// Impurity threshold used for split early stop
+    // TODO: not yet really supported!
+    var minImpurityDecrease: Float
+    var tree: DTree?
+    var featureImportances: Tensor<Float> { return Tensor(0) }
+    var scoring: String = "accuracy"
+
+    //  splitter: String = "best",
+    init(criterion: String = "mse",
+         maxDepth: Int = -1,
+         maxFeatures: Int = -1, minSamplesSplit: Int = 2, minSamplesLeaf: Int = 1,
+         minImpurityDecrease: Float = 0,
+         scoring: String = "r2") {
+        // (self.criterion, self.splitter) = (criterion, splitter)
+        self.criterion = criterion
+        self.maxDepth = maxDepth
+        self.maxFeatures = maxFeatures
+        self.minSamplesSplit = minSamplesSplit
+        self.minSamplesLeaf = minSamplesLeaf
+        if minImpurityDecrease < 0 {
+            print("minImpurityDecrease must be >= 0, it is now set to 0")
+            self.minImpurityDecrease = 0
+        } else {
+            self.minImpurityDecrease = minImpurityDecrease
+        }
+        self.scoring = scoring
     }
 }
