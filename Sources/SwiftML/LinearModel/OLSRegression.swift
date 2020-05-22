@@ -6,7 +6,7 @@ import TensorFlow
 //     import Python
 // #endif
 
-protocol LinearRegressor: Estimator {
+protocol LinearEstimator: Estimator {
     var fitIntercept: Bool { get set }
     var weights: Tensor<Float> { get set }
     var intercept_: Tensor<Float> { get }
@@ -32,7 +32,7 @@ func preprocessX(_ xIn: Tensor<Float>, fitIntercept: Bool) -> Tensor<Float> {
 /// Linear regression implements Ordinary Least Squares.
 ///
 /// Can be called by `model.fit(x, y)` or `model(x, y)`.
-struct OLSRegression: LinearRegressor {
+struct OLSRegression: LinearEstimator {
     var fitIntercept: Bool
     var scoring: String
     var weights: Tensor<Float>
