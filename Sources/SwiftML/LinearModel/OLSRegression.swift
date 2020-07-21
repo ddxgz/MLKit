@@ -6,7 +6,7 @@ import TensorFlow
 //     import Python
 // #endif
 
-protocol LinearEstimator: Estimator {
+public protocol LinearEstimator: Estimator, Predictor {
     var fitIntercept: Bool { get set }
     var weights: Tensor<Float> { get set }
     var intercept_: Tensor<Float> { get }
@@ -32,11 +32,11 @@ func preprocessX(_ xIn: Tensor<Float>, fitIntercept: Bool) -> Tensor<Float> {
 /// Linear regression implements Ordinary Least Squares.
 ///
 /// Can be called by `model.fit(x, y)` or `model(x, y)`.
-struct OLSRegression: LinearEstimator {
-    var fitIntercept: Bool
-    var scoring: String
-    var weights: Tensor<Float>
-    var intercept_: Tensor<Float> {
+public struct OLSRegression: LinearEstimator {
+    public var fitIntercept: Bool
+    public var scoring: String
+    public var weights: Tensor<Float>
+    public var intercept_: Tensor<Float> {
         if fitIntercept {
             return weights[-1, 0 ... weights.shape[1]]
         } else {
@@ -44,7 +44,7 @@ struct OLSRegression: LinearEstimator {
         }
     }
 
-    var coef_: Tensor<Float> {
+    public var coef_: Tensor<Float> {
         if fitIntercept {
             return weights[
                 0 ..< weights.shape[0] - 1, 0 ... weights.shape[1]
@@ -54,7 +54,7 @@ struct OLSRegression: LinearEstimator {
         }
     }
 
-    init(fitIntercept: Bool = true, scoring: String = "r2") {
+    public init(fitIntercept: Bool = true, scoring: String = "r2") {
         weights = Tensor<Float>(0)
         self.fitIntercept = fitIntercept
         // precondition(Scores.keys.contains(scoring),
@@ -62,12 +62,12 @@ struct OLSRegression: LinearEstimator {
         self.scoring = scoring
     }
 
-    mutating func callAsFunction(data x: Tensor<Float>, labels y: Tensor<Float>) {
+    public mutating func callAsFunction(data x: Tensor<Float>, labels y: Tensor<Float>) {
         fit(data: x, labels: y)
     }
 
     // \beta = (X^T dot X)^-1 dot X^T dot y
-    mutating func fit(data x: Tensor<Float>, labels y: Tensor<Float>) {
+    public mutating func fit(data x: Tensor<Float>, labels y: Tensor<Float>) {
         let x = preprocessX(x, fitIntercept: fitIntercept)
 
         weights = matmul(
@@ -80,7 +80,7 @@ struct OLSRegression: LinearEstimator {
         )
     }
 
-    func predict(data x: Tensor<Float>) -> Tensor<Float> {
+    public func predict(data x: Tensor<Float>) -> Tensor<Float> {
         // let x = preprocessX(x)
         let x = preprocessX(x, fitIntercept: fitIntercept)
         return matmul(x, weights)

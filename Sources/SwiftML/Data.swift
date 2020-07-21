@@ -1,9 +1,9 @@
 import TensorFlow
 
-typealias Matrix = Tensor<Float>
+public typealias Matrix = Tensor<Float>
 
 extension Matrix {
-    func select(rows: [Int]) -> Matrix {
+    public func select(rows: [Int]) -> Matrix {
         // guard rows != nil || cols != nil else {
         //     print("not param provided")
         //     return self

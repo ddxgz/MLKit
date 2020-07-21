@@ -23,7 +23,7 @@ let package = Package(
         // Targets can depend on other targets in this package, and on products in packages which this package depends on.
         .target(
             name: "SwiftML",
-            dependencies: [.product(name: "Logging", package: "swift-log")]
+            dependencies: ["LASwift", .product(name: "Logging", package: "swift-log")]
         ),
         .testTarget(
             name: "SwiftMLTests",

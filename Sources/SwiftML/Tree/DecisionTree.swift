@@ -10,7 +10,7 @@ import TensorFlow
 
 // typealias IntValue = Int32
 
-protocol TreeEstimator: Estimator {
+public protocol TreeEstimator: Estimator, Predictor {
     var criterion: String { get set }
     var nFeatures: Int { get set }
     var nClasses: Int { get set }
@@ -92,7 +92,7 @@ class Node: CustomStringConvertible {
 /// The root N of T is stored in TREE [1].
 /// If a node occupies TREE [k] then its left child is stored in TREE [2 * k]
 /// and its right child is stored into TREE [2 * k + 1].
-class DTree {
+public class DTree {
     var nodes: [Node]
     init() { nodes = [Node]() }
 
@@ -451,7 +451,7 @@ struct BestFirstTreeBuilder {
 }
 
 extension TreeEstimator {
-    mutating func fit(data x: Tensor<Float>, labels y: Tensor<Float>) {
+    public mutating func fit(data x: Tensor<Float>, labels y: Tensor<Float>) {
         //// check input data is 2d
         // print(x.shape)
 
@@ -540,7 +540,7 @@ extension TreeEstimator {
         // print(tree.score)
     }
 
-    func predict(data x: Tensor<Float>) -> Tensor<Float> {
+    public func predict(data x: Tensor<Float>) -> Tensor<Float> {
         // print(x)
         let proba = tree!.predict(x)
         print(proba)
@@ -551,7 +551,7 @@ extension TreeEstimator {
         return result
     }
 
-    func printTree() {
+    public func printTree() {
         guard self.tree != nil else {
             print("Tree not built!")
             return
@@ -566,28 +566,28 @@ extension TreeEstimator {
     }
 }
 
-struct DecisionTreeClassifier: TreeEstimator {
+public struct DecisionTreeClassifier: TreeEstimator {
     // var criterion, splitter: String
-    var criterion: String
-    var nFeatures: Int = 0
-    var nClasses: Int = 0
-    var maxDepth: Int
-    var maxFeatures: Int
-    var minSamplesSplit: Int
-    var minSamplesLeaf: Int
+    public var criterion: String
+    public var nFeatures: Int = 0
+    public var nClasses: Int = 0
+    public var maxDepth: Int
+    public var maxFeatures: Int
+    public var minSamplesSplit: Int
+    public var minSamplesLeaf: Int
     /// Impurity threshold used for split early stop
     // TODO: not yet really supported!
     var minImpurityDecrease: Float
-    var tree: DTree?
-    var featureImportances: Tensor<Float> { return Tensor(0) }
-    var scoring: String = "accuracy"
+    public var tree: DTree?
+    public var featureImportances: Tensor<Float> { return Tensor(0) }
+    public var scoring: String = "accuracy"
 
     //  splitter: String = "best",
-    init(criterion: String = "gini",
-         maxDepth: Int = -1,
-         maxFeatures: Int = -1, minSamplesSplit: Int = 2, minSamplesLeaf: Int = 1,
-         minImpurityDecrease: Float = 0,
-         scoring: String = "accuracy") {
+    public init(criterion: String = "gini",
+                maxDepth: Int = -1,
+                maxFeatures: Int = -1, minSamplesSplit: Int = 2, minSamplesLeaf: Int = 1,
+                minImpurityDecrease: Float = 0,
+                scoring: String = "accuracy") {
         // (self.criterion, self.splitter) = (criterion, splitter)
         self.criterion = criterion
         self.maxDepth = maxDepth
@@ -604,28 +604,28 @@ struct DecisionTreeClassifier: TreeEstimator {
     }
 }
 
-struct DecisionTreeRegressor: TreeEstimator {
+public struct DecisionTreeRegressor: TreeEstimator {
     // var criterion, splitter: String
-    var criterion: String
-    var nFeatures: Int = 0
-    var nClasses: Int = 0
-    var maxDepth: Int
-    var maxFeatures: Int
-    var minSamplesSplit: Int
-    var minSamplesLeaf: Int
+    public var criterion: String
+    public var nFeatures: Int = 0
+    public var nClasses: Int = 0
+    public var maxDepth: Int
+    public var maxFeatures: Int
+    public var minSamplesSplit: Int
+    public var minSamplesLeaf: Int
     /// Impurity threshold used for split early stop
     // TODO: not yet really supported!
     var minImpurityDecrease: Float
-    var tree: DTree?
-    var featureImportances: Tensor<Float> { return Tensor(0) }
-    var scoring: String = "accuracy"
+    public var tree: DTree?
+    public var featureImportances: Tensor<Float> { return Tensor(0) }
+    public var scoring: String = "accuracy"
 
     //  splitter: String = "best",
-    init(criterion: String = "mse",
-         maxDepth: Int = -1,
-         maxFeatures: Int = -1, minSamplesSplit: Int = 2, minSamplesLeaf: Int = 1,
-         minImpurityDecrease: Float = 0,
-         scoring: String = "r2") {
+    public init(criterion: String = "mse",
+                maxDepth: Int = -1,
+                maxFeatures: Int = -1, minSamplesSplit: Int = 2, minSamplesLeaf: Int = 1,
+                minImpurityDecrease: Float = 0,
+                scoring: String = "r2") {
         // (self.criterion, self.splitter) = (criterion, splitter)
         self.criterion = criterion
         self.maxDepth = maxDepth

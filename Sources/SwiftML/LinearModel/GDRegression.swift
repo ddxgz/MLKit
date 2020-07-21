@@ -10,17 +10,17 @@ protocol GDEstimator: LinearEstimator {
 }
 
 extension GDEstimator {
-    var intercept_: Tensor<Float> {
+    public var intercept_: Tensor<Float> {
         guard self.model != nil else { return Tensor<Float>(0) }
         return self.model!.bias
     }
 
-    var coef_: Tensor<Float> {
+    public var coef_: Tensor<Float> {
         guard self.model != nil else { return Tensor<Float>(0) }
         return self.model!.weight
     }
 
-    func predict(data x: Tensor<Float>) -> Tensor<Float> {
+    public func predict(data x: Tensor<Float>) -> Tensor<Float> {
         guard self.model != nil else {
             logger.error("Model not trainied!")
             return Tensor<Float>(0)
@@ -31,19 +31,27 @@ extension GDEstimator {
     }
 }
 
+enum Optimizers: String {
+    case sgd
+    case adam
+    case rmsprop
+}
+
 // TODO: add config for activation, optimizer, loss
-struct GDRegression: GDEstimator {
-    var fitIntercept: Bool = true
-    var scoring: String = "r2"
-    var weights: Tensor<Float>
+public struct GDRegression: GDEstimator {
+    public var fitIntercept: Bool = true
+    public var scoring: String = "r2"
+    public var weights: Tensor<Float>
 
     var learningRate: Float
     var epochs: Int
+    var optimizer: String
     var model: Dense<Float>?
 
-    init(learningRate: Float, epochs: Int, verbose: Bool = false) {
+    public init(learningRate: Float, epochs: Int, optimizer: String = "sgd", verbose: Bool = false) {
         self.learningRate = learningRate
         self.epochs = epochs
+        self.optimizer = optimizer
 
         self.weights = Tensor<Float>(0)
         // self.scoring = "r2"
@@ -54,19 +62,20 @@ struct GDRegression: GDEstimator {
     }
 
     // @differentiable
-    mutating func fit(data x: Tensor<Float>, labels y: Tensor<Float>) {
+    public mutating func fit(data x: Tensor<Float>, labels y: Tensor<Float>) {
         var model = Dense<Float>(inputSize: x.shape[1], outputSize: 1,
                                  activation: relu)
 
-        let optim = SGD(for: model, learningRate: self.learningRate)
+        let optim = Adam(for: model, learningRate: self.learningRate)
+        // let optim = SGD(for: model, learningRate: self.learningRate)
         // let optim = RMSProp(for: self.model, learningRate: self.learningRate)
         Context.local.learningPhase = .training
 
         for i in 1 ... self.epochs {
             let modelGrad = gradient(at: model) { model -> Tensor<Float> in
                 let yhat = model(x)
-                // let loss = l1Loss(predicted: yhat, expected: y)
-                let loss = meanSquaredError(predicted: yhat, expected: y)
+                let loss = l2Loss(predicted: yhat, expected: y, reduction: _mean)
+                // let loss = meanSquaredError(predicted: yhat, expected: y)
                 // print("loss: \(loss)")
                 logger.debug("Epoch: \(i), loss: \(loss)")
                 return loss
