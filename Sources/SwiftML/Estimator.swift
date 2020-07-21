@@ -1,18 +1,21 @@
 import TensorFlow
 
-protocol Estimator {
+public protocol Estimator {
     // var featureImportances: Tensor<Float> { get }
-    var scoring: String { get }
 
     mutating func fit(data x: Tensor<Float>, labels y: Tensor<Float>)
+}
+
+public protocol Predictor {
+    var scoring: String { get }
 
     func predict(data x: Tensor<Float>) -> Tensor<Float>
 
     func score(data x: Tensor<Float>, labels y: Tensor<Float>) -> Float
 }
 
-extension Estimator {
-    func score(data x: Tensor<Float>, labels y: Tensor<Float>) -> Float {
+extension Predictor {
+    public func score(data x: Tensor<Float>, labels y: Tensor<Float>) -> Float {
         guard let scorer = Scores[scoring] else {
             print("scorer not found!")
             return 0
@@ -29,4 +32,8 @@ extension Estimator {
         // print("pred: \(pred)")
         return scorer(y, pred)
     }
+}
+
+protocol Transformer {
+    func fitTranform()
 }
