@@ -1,3 +1,4 @@
+import LASwift
 import TensorFlow
 
 public typealias Matrix = Tensor<Float>
@@ -45,5 +46,17 @@ extension Matrix {
             }
         }
         return new
+    }
+}
+
+extension Matrix {
+    public func toLAMatrix() -> LASwift.Matrix {
+        return LASwift.Matrix(self.shape[0], self.shape[1], flattened().scalars.map { Double($0) })
+    }
+}
+
+extension Matrix {
+    public init(_ input: LASwift.Matrix) {
+        self.init(shape: [input.rows, input.cols], scalars: input.flat.map { Float($0) })
     }
 }
