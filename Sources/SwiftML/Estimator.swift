@@ -1,9 +1,6 @@
 import TensorFlow
 
 public protocol Estimator {
-    // var featureImportances: Tensor<Float> { get }
-
-    mutating func fit(data x: Tensor<Float>, labels y: Tensor<Float>)
     // mutating func fit(data x: Tensor<Float>, labels y: Tensor<Float>)
 }
 
@@ -14,8 +11,8 @@ enum EstimatorError: Error {
 public protocol Predictor {
     var scoring: String { get }
 
+    mutating func fit(data x: Tensor<Float>, labels y: Tensor<Float>)
     func predict(data x: Tensor<Float>) -> Tensor<Float>
-
     func score(data x: Tensor<Float>, labels y: Tensor<Float>) -> Float
 }
 
@@ -40,6 +37,7 @@ extension Predictor {
 }
 
 public protocol FitTransformer: Estimator {
-    func transform(X: Matrix) -> Matrix
-    func fitTranform(X: Matrix) -> Matrix
+    mutating func fit(_ x: Matrix)
+    func transform(_ x: Matrix) -> Matrix
+    func fitTranform(_ x: Matrix) -> Matrix
 }

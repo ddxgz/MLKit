@@ -26,6 +26,7 @@ public struct PCA: PCATransformer {
             throw EstimatorError.notSupportedParameter("nComponents should be > 0")
         }
         self.nComponents = nComponents
+
         let svdSolverOpt = SvdSolver(rawValue: svdSolver)
         guard svdSolverOpt != nil else {
             throw EstimatorError.notSupportedParameter("not supported svd solver!")
@@ -34,30 +35,30 @@ public struct PCA: PCATransformer {
     }
 
     // public func fit(data x: Matrix, labels y: Matrix) -> PCATransformer {
-    public mutating func fit(data x: Tensor<Float>, labels y: Tensor<Float>) {
+    public mutating func fit(_ x: Matrix) {
         // TODO: check if X is sparse matrix
         // TODO: validate data
 
         switch self.svdSolver {
         case .full:
-            self.fitFull(X: x)
+            self.fitFull(x)
         }
         // return self
     }
 
-    mutating func fitFull(X: Matrix) -> (u: Tensor<Float>, s: Tensor<Float>, v: Tensor<Float>) {
-        let nSamples = X.shape[0]
-        let nFeatures = X.shape[1]
+    mutating func fitFull(_ x: Matrix) -> (u: Tensor<Float>, s: Tensor<Float>, v: Tensor<Float>) {
+        let nSamples = x.shape[0]
+        let nFeatures = x.shape[1]
 
         // center data
-        let mean = X.mean(alongAxes: Tensor<Int32>(0))
-        let centeredX = X - mean
-        print(X)
-        print(centeredX)
+        let mean = x.mean(alongAxes: Tensor<Int32>(0))
+        let centeredx = x - mean
+        print(x)
+        print(centeredx)
 
         // let (u, s, v) = _Raw.svd(center, fullMatrices: false)
         // print(Matrix(v.transposed())[0..., 0 ..< 3])
-        let (U, S, V) = _Raw.svd(centeredX)
+        let (U, S, V) = _Raw.svd(centeredx)
 
         // TODO: flip eigenvector's sign to enforce deterministic output
         let explainedVariance = pow(S, 2) / Float(nSamples - 1)
@@ -83,12 +84,12 @@ public struct PCA: PCATransformer {
     }
 
     // TODO:
-    public func transform(X: Matrix) -> Matrix {
-        return X
+    public func transform(_ x: Matrix) -> Matrix {
+        return x
     }
 
     // TODO:
-    public func fitTranform(X: Matrix) -> Matrix {
-        return X
+    public func fitTranform(_ x: Matrix) -> Matrix {
+        return x
     }
 }

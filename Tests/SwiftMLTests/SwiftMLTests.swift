@@ -38,7 +38,7 @@ final class SwiftMLTests: XCTestCase {
         let m1 = Tensor(shape: [3, 4], scalars: [Float](stride(from: 0.0, to: 12.0, by: 1.0)))
 
         var pca = try PCA(nComponents: 3, svdSolver: "full")
-        pca.fit(data: m1, labels: Tensor<Float>(0))
+        pca.fit(m1)
         print(pca.components)
         print(pow(pca.components!, 2))
         print(pca.explainedVarianceRatio)
