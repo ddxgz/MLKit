@@ -1,6 +1,7 @@
 import XCTest
 
-import LASwift
+// import LASwift
+import Nimble
 import SwiftML
 import TensorFlow
 
@@ -25,19 +26,58 @@ final class SwiftMLTests: XCTestCase {
     }
 
     static var allTests = [
-        ("testMatrix", testMatrix),
+        ("testPCA", testPCA),
+        // ("testMatrix", testMatrix),
         ("testOLS", testOLS),
     ]
 
-    func testMatrix() throws {
+    func testPCA() throws {
         let cnt = 5
-        let m1 = ones(cnt, cnt)
-        print(m1)
-        XCTAssertEqual(m1.rows, cnt)
+        // let m1 = Tensor(randomNormal: [cnt, cnt], mean: Tensor<Float>(5),
+        // standardDeviation: Tensor<Float>(5))
+        let m1 = Tensor(shape: [3, 4], scalars: [Float](stride(from: 0.0, to: 12.0, by: 1.0)))
 
-        let (u, s, v) = svd(m1)
-        print(u, s, v)
+        var pca = try PCA(nComponents: 3, svdSolver: "full")
+        pca.fit(data: m1, labels: Tensor<Float>(0))
+        print(pca.components)
+        print(pow(pca.components!, 2))
+        print(pca.explainedVarianceRatio)
+        print(pca.singularValues)
+
+        let decom = Python.import("sklearn.decomposition")
+        var pcaSk = decom.PCA(n_components: 3, svd_solver: "full")
+        pcaSk.fit(m1.makeNumpyArray())
+        let componentsSk = Tensor<Float>(numpy: pcaSk.components_)
+        print(componentsSk)
+
+        // // let (u, s, v) = m1.svd()
+        // let (u, s, v) = _Raw.svd(m1, fullMatrices: false)
+        // print(Matrix(v.transposed())[0..., 0 ..< 3])
+        // print(v.shape)
+
+        // let linalg = Python.import("scipy.linalg")
+        // let svdobj = linalg.svd(m1.makeNumpyArray(), full_matrices: false)
+        // print(svdobj[2][0 ..< 3])
+        // print(svdobj[2].shape)
+
+        // print(m1.svd(fullMatrices: false).v)
+
+        // let vSci = Tensor<Float>(numpy: svdobj[2])
+        // expect(Matrix(v)) == vSci
+
+        expect(pca.components) == componentsSk
+        // print("PCA components are equal")
     }
+
+    // func testMatrix() throws {
+    //     let cnt = 5
+    //     let m1 = ones(cnt, cnt)
+    //     print(m1)
+    //     XCTAssertEqual(m1.rows, cnt)
+
+    //     let (u, s, v) = svd(m1)
+    //     print(u, s, v)
+    // }
 
     func testOLS() throws {
         let np = Python.import("numpy")

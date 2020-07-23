@@ -15,6 +15,7 @@ let package = Package(
         // Dependencies declare other packages that this package depends on.
         // .package(url: /* package url */, from: "1.0.0"),
         .package(url: "https://github.com/alexandertar/LASwift", from: "0.2.3"),
+        .package(url: "https://github.com/Quick/Nimble.git", .upToNextMajor(from: "8.0.1")),
         .package(url: "https://github.com/apple/swift-log.git", from: "1.0.0"),
         // .package(name: "XGBoostSwift", url: "https://github.com/ddxgz/XGBoost.swift.git", from: "0.3.0"),
     ],
@@ -27,7 +28,7 @@ let package = Package(
         ),
         .testTarget(
             name: "SwiftMLTests",
-            dependencies: ["SwiftML", "LASwift"]
+            dependencies: ["SwiftML", "LASwift", "Nimble"]
         ),
     ]
 )

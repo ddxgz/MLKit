@@ -4,6 +4,11 @@ public protocol Estimator {
     // var featureImportances: Tensor<Float> { get }
 
     mutating func fit(data x: Tensor<Float>, labels y: Tensor<Float>)
+    // mutating func fit(data x: Tensor<Float>, labels y: Tensor<Float>)
+}
+
+enum EstimatorError: Error {
+    case notSupportedParameter(_ msg: String)
 }
 
 public protocol Predictor {
@@ -34,6 +39,7 @@ extension Predictor {
     }
 }
 
-protocol Transformer {
-    func fitTranform()
+public protocol FitTransformer: Estimator {
+    func transform(X: Matrix) -> Matrix
+    func fitTranform(X: Matrix) -> Matrix
 }
