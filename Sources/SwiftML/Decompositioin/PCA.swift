@@ -43,6 +43,7 @@ public struct PCA: PCATransformer {
         case .full:
             self.fitFull(x)
         }
+        // TODO: other solvers, e.g., randomized
         // return self
     }
 
@@ -61,6 +62,8 @@ public struct PCA: PCATransformer {
         let (U, S, V) = _Raw.svd(centeredx)
 
         // TODO: flip eigenvector's sign to enforce deterministic output
+        let (UFlipped, VFlipped) = svdFlip(u: U, v: V.transposed())
+
         let explainedVariance = pow(S, 2) / Float(nSamples - 1)
         let totalVar = explainedVariance.sum()
         let explainedVarianceRatio = explainedVariance / totalVar
@@ -72,7 +75,8 @@ public struct PCA: PCATransformer {
             self.noiseVariance = 0.0
         }
 
-        self.components = V.transposed()[0 ..< self.nComponents]
+        // self.components = V.transposed()[0 ..< self.nComponents]
+        self.components = VFlipped[0 ..< self.nComponents]
         // self.components = Matrix(V[0 ..< self.nComponents])
         self.nSamples = nSamples
         self.nFeatures = nFeatures
@@ -80,7 +84,7 @@ public struct PCA: PCATransformer {
         self.explainedVarianceRatio = explainedVarianceRatio
         self.singularValues = singularValues
 
-        return (U, S, V)
+        return (UFlipped, S, VFlipped)
     }
 
     // TODO:
@@ -91,5 +95,30 @@ public struct PCA: PCATransformer {
     // TODO:
     public func fitTranform(_ x: Matrix) -> Matrix {
         return x
+    }
+}
+
+public func svdFlip(u: Matrix, v: Matrix, uBasedDecision: Bool = true) -> (Matrix, Matrix) {
+    if uBasedDecision {
+        let maxAbsCols = _Raw.abs(u).argmax(squeezingAxis: 0)
+
+        let maxpos = maxAbsCols.expandingShape(at: 1)
+        let withmaxcols = u.transposed().batchGathering(atIndices: maxpos,
+                                                        alongAxis: 1).transposed()
+        let signs = _Raw.sign(withmaxcols)
+        let uFlipped = u * signs
+        let vFlipped = v * signs.transposed()
+
+        return (uFlipped, vFlipped)
+    } else {
+        let maxAbsCols = _Raw.abs(v).argmax(squeezingAxis: 0)
+
+        let maxpos = maxAbsCols.expandingShape(at: 1)
+        let withmaxcols = v.transposed().batchGathering(atIndices: maxpos,
+                                                        alongAxis: 1).transposed()
+        let signs = _Raw.sign(withmaxcols)
+        let uFlipped = u * signs
+        let vFlipped = v * signs.transposed()
+        return (uFlipped, vFlipped)
     }
 }
