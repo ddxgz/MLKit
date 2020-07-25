@@ -54,15 +54,17 @@ public struct PCA: PCATransformer {
         // center data
         let mean = x.mean(alongAxes: Tensor<Int32>(0))
         let centeredx = x - mean
-        print(x)
-        print(centeredx)
+        // print(x)
+        // print(centeredx)
 
         // let (u, s, v) = _Raw.svd(center, fullMatrices: false)
         // print(Matrix(v.transposed())[0..., 0 ..< 3])
-        let (U, S, V) = _Raw.svd(centeredx)
+        let (S, U, V) = _Raw.svd(centeredx)
 
+        // print(V)
         // TODO: flip eigenvector's sign to enforce deterministic output
-        let (UFlipped, VFlipped) = svdFlip(u: U, v: V.transposed())
+        let (UFlipped, VFlipped) = svdFlip(u: U, v: V.transposed(), uBasedDecision: true)
+        print(VFlipped)
 
         let explainedVariance = pow(S, 2) / Float(nSamples - 1)
         let totalVar = explainedVariance.sum()
@@ -101,7 +103,6 @@ public struct PCA: PCATransformer {
 public func svdFlip(u: Matrix, v: Matrix, uBasedDecision: Bool = true) -> (Matrix, Matrix) {
     if uBasedDecision {
         let maxAbsCols = _Raw.abs(u).argmax(squeezingAxis: 0)
-
         let maxpos = maxAbsCols.expandingShape(at: 1)
         let withmaxcols = u.transposed().batchGathering(atIndices: maxpos,
                                                         alongAxis: 1).transposed()
@@ -111,11 +112,11 @@ public func svdFlip(u: Matrix, v: Matrix, uBasedDecision: Bool = true) -> (Matri
 
         return (uFlipped, vFlipped)
     } else {
-        let maxAbsCols = _Raw.abs(v).argmax(squeezingAxis: 0)
+        let maxAbsCols = _Raw.abs(v.transposed()).argmax(squeezingAxis: 0)
 
         let maxpos = maxAbsCols.expandingShape(at: 1)
-        let withmaxcols = v.transposed().batchGathering(atIndices: maxpos,
-                                                        alongAxis: 1).transposed()
+        let withmaxcols = v.batchGathering(atIndices: maxpos,
+                                           alongAxis: 1).transposed()
         let signs = _Raw.sign(withmaxcols)
         let uFlipped = u * signs
         let vFlipped = v * signs.transposed()
