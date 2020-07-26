@@ -37,7 +37,7 @@ extension Predictor {
 }
 
 public protocol FitTransformer: Estimator {
-    mutating func fit(_ x: Matrix)
+    mutating func fit(_ x: Matrix) -> FitTransformer
     func transform(_ x: Matrix) -> Matrix
     func fitTranform(_ x: Matrix) -> Matrix
 }

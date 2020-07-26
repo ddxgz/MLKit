@@ -35,7 +35,7 @@ public struct PCA: PCATransformer {
     }
 
     // public func fit(data x: Matrix, labels y: Matrix) -> PCATransformer {
-    public mutating func fit(_ x: Matrix) {
+    public mutating func fit(_ x: Matrix) -> FitTransformer {
         // TODO: check if X is sparse matrix
         // TODO: validate data
 
@@ -44,7 +44,7 @@ public struct PCA: PCATransformer {
             self.fitFull(x)
         }
         // TODO: other solvers, e.g., randomized
-        // return self
+        return self
     }
 
     mutating func fitFull(_ x: Matrix) -> (u: Tensor<Float>, s: Tensor<Float>, v: Tensor<Float>) {
