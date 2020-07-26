@@ -13,6 +13,7 @@ public struct PCA: PCATransformer {
     public let nComponents: Int
     let svdSolver: SvdSolver
 
+    var mean: Matrix?
     public var nSamples: Int?
     public var nFeatures: Int?
     public var noiseVariance: Float?
@@ -36,15 +37,19 @@ public struct PCA: PCATransformer {
 
     // public func fit(data x: Matrix, labels y: Matrix) -> PCATransformer {
     public mutating func fit(_ x: Matrix) -> FitTransformer {
+        self._fit(x)
+        return self
+    }
+
+    mutating func _fit(_ x: Matrix) -> (u: Tensor<Float>, s: Tensor<Float>, v: Tensor<Float>) {
         // TODO: check if X is sparse matrix
         // TODO: validate data
 
         switch self.svdSolver {
         case .full:
-            self.fitFull(x)
+            return self.fitFull(x)
         }
         // TODO: other solvers, e.g., randomized
-        return self
     }
 
     mutating func fitFull(_ x: Matrix) -> (u: Tensor<Float>, s: Tensor<Float>, v: Tensor<Float>) {
@@ -52,14 +57,14 @@ public struct PCA: PCATransformer {
         let nFeatures = x.shape[1]
 
         // center data
-        let mean = x.mean(alongAxes: Tensor<Int32>(0))
-        let centeredx = x - mean
+        self.mean = x.mean(alongAxes: Tensor<Int32>(0))
+        let centeredX = x - self.mean!
         // print(x)
         // print(centeredx)
 
         // let (u, s, v) = _Raw.svd(center, fullMatrices: false)
         // print(Matrix(v.transposed())[0..., 0 ..< 3])
-        let (S, U, V) = _Raw.svd(centeredx)
+        let (S, U, V) = _Raw.svd(centeredX)
 
         // print(V)
         // TODO: flip eigenvector's sign to enforce deterministic output
@@ -90,13 +95,33 @@ public struct PCA: PCATransformer {
     }
 
     // TODO:
-    public func transform(_ x: Matrix) -> Matrix {
-        return x
+    public func transform(_ x: Matrix) throws -> Matrix {
+        // TODO: check if self is fitted
+        guard self.components != nil else {
+            throw EstimatorError.notFittedError()
+        }
+
+        // TODO: check input
+
+        var X: Matrix
+        if self.mean != nil {
+            X = x - self.mean!
+        } else {
+            X = x
+        }
+        let xTransformed = matmul(X, self.components!.transposed())
+
+        // TODO: if self.whiten
+        return xTransformed
     }
 
     // TODO:
-    public func fitTranform(_ x: Matrix) -> Matrix {
-        return x
+    public mutating func fitTranform(_ x: Matrix) -> Matrix {
+        let decomposed = self._fit(x)
+        let U = decomposed.u[0..., 0 ..< self.nComponents]
+        // TODO: if self.whiten
+
+        return U * decomposed.s[0 ..< self.nComponents]
     }
 }
 
