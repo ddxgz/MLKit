@@ -1,8 +1,8 @@
 import XCTest
 
+import MLKit
 // import LASwift
 import Nimble
-import SwiftML
 import TensorFlow
 
 // import PythonKit
@@ -35,7 +35,7 @@ final class SwiftMLTests: XCTestCase {
         let cnt = 5
         // let m1 = Tensor(randomNormal: [cnt, cnt], mean: Tensor<Float>(5),
         // standardDeviation: Tensor<Float>(5))
-        let m1 = Tensor(shape: [3, 4], scalars: [Float](stride(from: 0.0, to: 12.0, by: 1.0)))
+        let m1 = Tensor(shape: [3, 5], scalars: [Float](stride(from: 0.0, to: 15.0, by: 1.0)))
 
         var pca = try PCA(nComponents: 3, svdSolver: "full")
         pca.fit(m1)
@@ -52,13 +52,13 @@ final class SwiftMLTests: XCTestCase {
 
         // // let (u, s, v) = m1.svd()
         // let (u, s, v) = _Raw.svd(m1, fullMatrices: false)
+        // print("tf shape: \(u.shape), \(s.shape), \(v.shape)")
         // print(Matrix(v.transposed())[0..., 0 ..< 3])
-        // print(v.shape)
 
         // let linalg = Python.import("scipy.linalg")
         // let svdobj = linalg.svd(m1.makeNumpyArray(), full_matrices: false)
+        // print("scipy shape: \(svdobj[0].shape), \(svdobj[1].shape), \(svdobj[2].shape)")
         // print(svdobj[2][0 ..< 3])
-        // print(svdobj[2].shape)
 
         // print(m1.svd(fullMatrices: false).v)
 
@@ -67,6 +67,12 @@ final class SwiftMLTests: XCTestCase {
 
         expect(pca.components) == componentsSk
         // print("PCA components are equal")
+
+        let m2 = Tensor(shape: [3, 5], scalars: [Float](stride(from: 2.0, to: 17.0, by: 1.0)))
+        print(try! pca.transform(m2))
+
+        var pca2 = try PCA(nComponents: 3, svdSolver: "full")
+        print(pca2.fitTranform(m2))
     }
 
     // func testMatrix() throws {

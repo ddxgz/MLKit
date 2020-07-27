@@ -87,6 +87,7 @@ struct MSEv1: Criterion {
     }
 }
 
+/// Use enum to represent set of supported criterion
 func getCriterion(_ type_: String) -> Criterion? {
     switch type_ {
     case "gini":

@@ -1,7 +1,7 @@
 import XCTest
 
-import SwiftMLTests
+import MLKitTests
 
 var tests = [XCTestCaseEntry]()
-tests += SwiftMLTests.allTests()
+tests += MLKitTests.allTests()
 XCTMain(tests)

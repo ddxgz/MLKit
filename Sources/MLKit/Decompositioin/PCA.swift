@@ -59,17 +59,10 @@ public struct PCA: PCATransformer {
         // center data
         self.mean = x.mean(alongAxes: Tensor<Int32>(0))
         let centeredX = x - self.mean!
-        // print(x)
-        // print(centeredx)
 
-        // let (u, s, v) = _Raw.svd(center, fullMatrices: false)
-        // print(Matrix(v.transposed())[0..., 0 ..< 3])
-        let (S, U, V) = _Raw.svd(centeredX)
+        let (S, U, V) = _Raw.svd(centeredX, fullMatrices: false)
 
-        // print(V)
-        // TODO: flip eigenvector's sign to enforce deterministic output
         let (UFlipped, VFlipped) = svdFlip(u: U, v: V.transposed(), uBasedDecision: true)
-        print(VFlipped)
 
         let explainedVariance = pow(S, 2) / Float(nSamples - 1)
         let totalVar = explainedVariance.sum()
@@ -82,9 +75,8 @@ public struct PCA: PCATransformer {
             self.noiseVariance = 0.0
         }
 
-        // self.components = V.transposed()[0 ..< self.nComponents]
+        // V is transposed after svd flip
         self.components = VFlipped[0 ..< self.nComponents]
-        // self.components = Matrix(V[0 ..< self.nComponents])
         self.nSamples = nSamples
         self.nFeatures = nFeatures
         self.explainedVariance = explainedVariance
@@ -94,7 +86,6 @@ public struct PCA: PCATransformer {
         return (UFlipped, S, VFlipped)
     }
 
-    // TODO:
     public func transform(_ x: Matrix) throws -> Matrix {
         // TODO: check if self is fitted
         guard self.components != nil else {
@@ -115,7 +106,6 @@ public struct PCA: PCATransformer {
         return xTransformed
     }
 
-    // TODO:
     public mutating func fitTranform(_ x: Matrix) -> Matrix {
         let decomposed = self._fit(x)
         let U = decomposed.u[0..., 0 ..< self.nComponents]

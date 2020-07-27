@@ -6,6 +6,7 @@ public protocol Estimator {
 
 enum EstimatorError: Error {
     case notSupportedParameter(_ msg: String)
+    case notFittedError(_ msg: String = "fit() should be called first.")
 }
 
 public protocol Predictor {
@@ -38,6 +39,6 @@ extension Predictor {
 
 public protocol FitTransformer: Estimator {
     mutating func fit(_ x: Matrix) -> FitTransformer
-    func transform(_ x: Matrix) -> Matrix
-    func fitTranform(_ x: Matrix) -> Matrix
+    func transform(_ x: Matrix) throws -> Matrix
+    mutating func fitTranform(_ x: Matrix) -> Matrix
 }
